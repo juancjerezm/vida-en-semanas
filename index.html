@@ -4,348 +4,749 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Vida en Semanas</title>
-<link rel="stylesheet" href="shared.css">
-<!-- Blocking dark mode FOUC prevention -->
-<script>
-(function(){
-  try {
-    var raw = localStorage.getItem('vida-en-semanas');
-    if (raw) {
-      var data = JSON.parse(raw);
-      var theme = data.profile && data.profile.theme;
-      if (theme === 'dark') {
-        document.documentElement.dataset.theme = 'dark';
-      } else if (theme === 'light') {
-        document.documentElement.dataset.theme = 'light';
-      } else {
-        // system
-        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-          document.documentElement.dataset.theme = 'dark';
-        }
-      }
-    } else {
-      // no data, system default
-      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        document.documentElement.dataset.theme = 'dark';
-      }
-    }
-  } catch(e) {}
-})();
-</script>
 <style>
-  .hero-preview-container {
+  :root {
+    --bg:      oklch(99% 0.002 240);
+    --surface: oklch(100% 0 0);
+    --fg:      oklch(18% 0.012 250);
+    --muted:   oklch(54% 0.012 250);
+    --border:  oklch(92% 0.005 250);
+    --accent:  oklch(15% 0 0);
+    --accent-subtle: oklch(95% 0.025 255);
+    --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+    --font-body:    -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+    --font-mono:    'JetBrains Mono', 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--fg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100dvh;
+  }
+
+  .screen { display: none; min-height: 100dvh; }
+  .screen.active { display: flex; }
+
+  /* ====== Screen 1 — Input ====== */
+  .screen-input {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(1.5rem, 4vw, 3rem) 1.5rem;
+    gap: clamp(1.5rem, 3vw, 2.5rem);
+  }
+
+  .calendar-icon {
+    width: 48px;
+    height: 52px;
+    border: 2px solid var(--fg);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .calendar-icon-top {
+    background: var(--fg);
+    height: 14px;
+  }
+
+  .calendar-icon-body {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--fg);
+  }
+
+  .input-header { text-align: center; max-width: 540px; }
+
+  .input-header h1 {
+    font-family: var(--font-display);
+    font-size: clamp(26px, 4.5vw, 42px);
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    color: var(--fg);
+    margin-bottom: 0.75rem;
+  }
+
+  .input-header p {
+    font-size: clamp(14px, 1.6vw, 16px);
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .form-card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 1rem 1.25rem;
+    border-radius: 14px;
+    padding: clamp(1.5rem, 3vw, 2rem);
     width: 100%;
+    max-width: 420px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
   }
-  .hero-preview-stats {
+
+  .field { display: flex; flex-direction: column; gap: 0.375rem; }
+
+  .field label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .field input[type="date"] {
+    padding: 0.85rem 0.875rem;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-size: 15px;
+    font-family: var(--font-body);
+    color: var(--fg);
+    background: var(--bg);
+    outline: none;
+    transition: border-color 0.15s;
+    -webkit-appearance: none;
+    text-align: center;
+  }
+
+  .field input:focus {
+    border-color: var(--fg);
+  }
+
+  .btn-primary {
+    width: 100%;
+    padding: 0.95rem 1.5rem;
+    background: var(--fg);
+    color: var(--bg);
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    font-family: var(--font-body);
+    cursor: pointer;
+    letter-spacing: -0.01em;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+
+  .btn-primary:hover { opacity: 0.88; }
+  .btn-primary:active { transform: scale(0.985); }
+  .btn-primary:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+
+  .footer-note {
+    text-align: center;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+    line-height: 1.6;
+  }
+
+  /* ====== Screen 2 — Results ====== */
+  .screen-results {
+    flex-direction: column;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: clamp(1rem, 3vw, 2rem) clamp(1rem, 3vw, 1.5rem);
+    gap: 1.5rem;
+  }
+
+  .results-top {
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
-    margin-bottom: 0.5rem;
+    align-items: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .results-top h2 {
+    font-family: var(--font-display);
+    font-size: clamp(20px, 3vw, 28px);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.3;
+  }
+
+  .results-top h2 .name-highlight { color: var(--fg); text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 6px; }
+
+  .user-context {
+    font-size: 14px;
+    color: var(--muted);
+    margin-top: 0.25rem;
+  }
+
+  .btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.875rem;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: var(--font-body);
+    color: var(--muted);
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+    white-space: nowrap;
+  }
+
+  .btn-back:hover { border-color: var(--fg); color: var(--fg); }
+
+  /* ====== Fun Stats ====== */
+  .fun-stats-section {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+  }
+
+  .fun-stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    transition: border-color 0.2s;
+  }
+
+  .fun-stat-card:hover { border-color: var(--fg); }
+
+  .fun-stat-icon {
+    font-size: 20px;
+    line-height: 1;
+  }
+
+  .fun-stat-value {
+    font-family: var(--font-mono);
+    font-size: clamp(18px, 2.2vw, 24px);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+  }
+
+  .fun-stat-label {
     font-size: 12px;
     color: var(--muted);
+    line-height: 1.4;
+  }
+
+  /* ====== Stats Row ====== */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: clamp(0.875rem, 2vw, 1.125rem) clamp(0.75rem, 1.5vw, 1rem);
+  }
+
+  .stat-label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+  }
+
+  .stat-value {
     font-family: var(--font-mono);
+    font-size: clamp(18px, 2.5vw, 26px);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.15;
+  }
+
+  .stat-sub {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 0.25rem;
+    line-height: 1.4;
+  }
+
+  /* ====== Grid ====== */
+  .grid-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .grid-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem 0.75rem;
+  }
+
+  .grid-card-title { font-size: 14px; font-weight: 500; letter-spacing: -0.01em; }
+  .grid-card-subtitle { font-size: 12px; color: var(--muted); }
+
+  .grid-scroll {
+    overflow-y: auto;
+    max-height: 55vh;
+    padding: 0 0.25rem 1rem 0.25rem;
+    margin: 0 1rem;
+  }
+
+  .grid-scroll::-webkit-scrollbar { width: 4px; }
+  .grid-scroll::-webkit-scrollbar-track { background: transparent; }
+  .grid-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .life-grid-wrapper { display: flex; gap: 0.5rem; }
+
+  .year-labels {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-top: 0;
+    flex-shrink: 0;
+  }
+
+  .year-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--muted);
+    text-align: right;
+    width: 28px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  .life-grid {
+    display: grid;
+    grid-template-columns: repeat(52, 1fr);
+    gap: 2px;
+    flex: 1;
+  }
+
+  .life-cell {
+    aspect-ratio: 1;
+    border-radius: 2px;
+    transition: transform 0.1s;
+    cursor: default;
+  }
+
+  .life-cell.lived   { background: var(--fg); }
+  .life-cell.current { background: var(--fg); outline: 2px solid var(--fg); outline-offset: 2px; border-radius: 3px; position: relative; z-index: 1; }
+  .life-cell.future  { background: var(--border); }
+
+  .life-cell:hover { transform: scale(1.8); z-index: 2; }
+
+  .legend {
+    display: flex;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+    padding: 0.75rem 1.25rem 1rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 700px) {
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .fun-stats-section { grid-template-columns: repeat(2, 1fr); }
+    .year-labels { display: none; }
+    .life-grid { gap: 1px; }
+  }
+
+  @media (max-width: 420px) {
+    .stats-row { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+    .fun-stats-section { grid-template-columns: 1fr; }
+    .results-top { flex-direction: column; }
+    .btn-back { align-self: flex-start; }
   }
 </style>
 </head>
 <body>
 
-<header class="landing-header" aria-label="Cabecera de la landing">
-  <button class="theme-toggle" id="theme-toggle" aria-label="Cambiar tema visual">&#x25D1;</button>
-</header>
+<!-- ====== Screen 1 — Input ====== -->
+<div class="screen screen-input active" id="screen-input" aria-label="Ingresa tu fecha de nacimiento">
+  <div class="calendar-icon" aria-hidden="true">
+    <div class="calendar-icon-top"></div>
+    <div class="calendar-icon-body" id="calendar-day">—</div>
+  </div>
 
-<main class="landing-page">
+  <header class="input-header">
+    <h1>Vida en Semanas</h1>
+    <p>Cada cuadrado representa una semana de tu vida. El tiempo es tu recurso mas valioso. Como lo estas usando?</p>
+  </header>
 
-  <!-- Hero -->
-  <section id="hero" class="hero" aria-label="Presentacion principal">
-    <h1>Cada semana de tu vida,<br>en una <span class="accent-word">sola mirada</span></h1>
-    <p>Visualiza las semanas que ya viviste y las que te quedan por delante. Sin cuentas, sin registros, sin notificaciones. Solo tu vida, representada en semanas.</p>
-    <div class="hero-grid-preview">
-      <div class="hero-preview-container">
-        <div class="hero-preview-stats">
-          <span>Vista previa</span>
-          <span id="hero-preview-label">—</span>
-        </div>
-        <div class="mini-grid" id="hero-mini-grid" aria-label="Miniatura del calendario de vida"></div>
+  <form class="form-card" id="config-form" autocomplete="off" spellcheck="false">
+    <div class="field">
+      <label for="birth-input">Ingresa tu fecha de nacimiento</label>
+      <input type="date" id="birth-input" required>
+    </div>
+
+    <button type="button" class="btn-primary" id="btn-visualize" disabled>Calcular</button>
+  </form>
+
+  <div class="footer-note">
+    Version de prueba &middot; V.0.2<br>
+    Desarrollado con proposito
+  </div>
+</div>
+
+<!-- ====== Screen 2 — Results ====== -->
+<div class="screen screen-results" id="screen-results" aria-label="Tu calendario de vida">
+  <div class="results-top">
+    <div>
+      <h2 id="results-heading">Tu vida en semanas</h2>
+      <p class="user-context" id="results-context"></p>
+    </div>
+    <button class="btn-back" id="btn-back" aria-label="Volver a editar">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3L5 8l5 5"/></svg>
+      Editar
+    </button>
+  </div>
+
+  <div class="stats-row" id="stats-row" aria-label="Resumen numerico"></div>
+
+  <div class="fun-stats-section" id="fun-stats" aria-label="Datos curiosos de tu vida"></div>
+
+  <div class="grid-card" id="grid-card">
+    <div class="grid-card-header">
+      <div>
+        <div class="grid-card-title">Cada cuadrado es una semana de tu vida</div>
+        <div class="grid-card-subtitle" id="grid-subtitle"></div>
       </div>
     </div>
-  </section>
-
-  <!-- Features -->
-  <section id="features" class="features-section" aria-label="Funcionalidades">
-    <h2 style="text-align:center;margin-bottom:1.5rem;">Todo lo que necesitas para ver tu vida con perspectiva</h2>
-    <div class="features-grid">
-      <div class="feature-card">
-        <div class="feature-card-icon">&#x25A6;</div>
-        <h3>Grilla de vida</h3>
-        <p>52 semanas por año, cada celda es una semana de tu vida. Pasado, presente y futuro en una sola vista.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-card-icon">&#x23F1;</div>
-        <h3>Tracking de tiempo</h3>
-        <p>Registra cuantas horas dedicas a trabajo, familia, ejercicio y aprendizaje cada semana.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-card-icon">&#x25CF;</div>
-        <h3>Racha de actividad</h3>
-        <p>Mantene la constancia. Segui tu racha de semanas activas y supera tu mejor marca personal.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-card-icon">&#x25C6;</div>
-        <h3>Hitos de vida</h3>
-        <p>Marcá eventos importantes en tu grilla: graduaciones, viajes, mudanzas. Tu historia en tu calendario.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-card-icon">&#x25AC;</div>
-        <h3>Balance de tiempo</h3>
-        <p>Visualiza como distribuiste tus horas entre las distintas areas de tu vida con graficos claros.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-card-icon">&#x270E;</div>
-        <h3>Reflexiones semanales</h3>
-        <p>Escribi lo que aprendiste, sentiste o lograste cada semana. Un diario personal integrado.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-card-icon">&#x23F0;</div>
-        <h3>Recordatorios</h3>
-        <p>El navegador te avisa cuando toca registrar tu semana. Nunca pierdas la racha.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-card-icon">&#x25D1;</div>
-        <h3>Modo oscuro</h3>
-        <p>Tema claro y oscuro con deteccion automatica del sistema. Comodo a cualquier hora del dia.</p>
+    <div class="grid-scroll" id="grid-scroll">
+      <div class="life-grid-wrapper">
+        <div class="year-labels" id="year-labels"></div>
+        <div class="life-grid" id="life-grid" aria-label="Calendario de vida — cada celda representa una semana"></div>
       </div>
     </div>
-  </section>
-
-  <!-- Pricing -->
-  <section id="pricing" class="pricing-section" aria-label="Planes y precios">
-    <h2>Planes simples, sin letra chica</h2>
-    <div class="pricing-grid">
-      <!-- Free -->
-      <div class="pricing-card">
-        <div class="pricing-name">Gratis</div>
-        <div class="pricing-price">$0<span>/mes</span></div>
-        <div class="pricing-features">
-          <div class="pricing-feature-row"><span class="check">&#x2713;</span> Grilla de vida + stats</div>
-          <div class="pricing-feature-row"><span class="check">&#x2713;</span> Tracking de tiempo (4 categorias)</div>
-          <div class="pricing-feature-row"><span class="check">&#x2713;</span> Racha (ultimas 2 semanas)</div>
-          <div class="pricing-feature-row"><span class="check">&#x2713;</span> Hitos de vida (3 max)</div>
-          <div class="pricing-feature-row"><span class="cross">—</span> Balance de tiempo</div>
-          <div class="pricing-feature-row"><span class="check">&#x2713;</span> Reflexiones (ultimas 4)</div>
-          <div class="pricing-feature-row"><span class="cross">—</span> Recordatorios</div>
-          <div class="pricing-feature-row"><span class="check">&#x2713;</span> Modo oscuro</div>
-        </div>
-        <div class="pricing-cta">
-          <button class="btn-primary" id="btn-start-free">Empezar gratis</button>
-        </div>
-      </div>
-
-      <!-- Pro -->
-      <div class="pricing-card featured">
-        <div class="pricing-badge">Mas popular</div>
-        <div class="pricing-name">Pro</div>
-        <div class="pricing-price">$4<span>/mes</span></div>
-        <div class="pricing-features">
-          <div class="pricing-feature-row"><span class="check">&#x2713;</span> Grilla de vida + stats</div>
-          <div class="pricing-feature-row"><span class="check">&#x2713;</span> Tracking de tiempo (4 categorias)</div>
-          <div class="pricing-feature-row"><span class="check">&#x2713;</span> Racha (historial completo)</div>
-          <div class="pricing-feature-row"><span class="check">&#x2713;</span> Hitos de vida (ilimitados)</div>
-          <div class="pricing-feature-row"><span class="check">&#x2713;</span> Balance de tiempo</div>
-          <div class="pricing-feature-row"><span class="check">&#x2713;</span> Reflexiones (historial completo)</div>
-          <div class="pricing-feature-row"><span class="check">&#x2713;</span> Recordatorios semanales</div>
-          <div class="pricing-feature-row"><span class="check">&#x2713;</span> Modo oscuro</div>
-        </div>
-        <div class="pricing-cta">
-          <button class="btn-primary" id="btn-start-pro">Proba Pro</button>
-        </div>
-      </div>
+    <div class="legend">
+      <div class="legend-item"><span class="legend-dot" style="background:var(--fg)"></span> Vividas</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--fg);outline:2px solid var(--fg);outline-offset:2px"></span> Esta semana</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--border)"></span> Por vivir</div>
     </div>
-  </section>
-
-  <!-- CTA -->
-  <section id="cta" class="cta-section" aria-label="Llamado a la accion">
-    <h2>Empeza hoy, es gratis</h2>
-    <p>Tus datos quedan en tu navegador. Sin servidores, sin cuentas, sin vueltas. Solo vos y tus semanas.</p>
-    <div class="cta-buttons">
-      <button class="btn-primary" id="btn-cta-free">Empezar gratis</button>
-      <button class="btn-secondary" id="btn-cta-pro">Proba Pro por $4/mes</button>
-    </div>
-  </section>
-
-</main>
+  </div>
+</div>
 
 <script>
 (function(){
   'use strict';
 
-  var LS_KEY = 'vida-en-semanas';
+  var state = { birthDate: null, lifespan: 80, today: new Date() };
 
-  function getDefaultState() {
-    return {
-      profile: {
-        name: '',
-        birthDate: null,
-        lifespan: 80,
-        plan: 'free',
-        theme: 'system'
+  var $screenInput   = document.getElementById('screen-input');
+  var $screenResults = document.getElementById('screen-results');
+  var $birthInput    = document.getElementById('birth-input');
+  var $btnVisualize  = document.getElementById('btn-visualize');
+  var $btnBack       = document.getElementById('btn-back');
+  var $calendarDay   = document.getElementById('calendar-day');
+
+  var defaultBirth = new Date();
+  defaultBirth.setFullYear(defaultBirth.getFullYear() - 30);
+  $birthInput.value = defaultBirth.toISOString().split('T')[0];
+  state.today.setHours(0, 0, 0, 0);
+  updateCalendarIcon();
+
+  /* ====== Core Math ====== */
+
+  function getDaysFromBirth(birthDate) {
+    var ms = state.today.getTime() - birthDate.getTime();
+    return Math.max(0, Math.floor(ms / (24 * 60 * 60 * 1000)));
+  }
+
+  function getWeeksFromBirth(birthDate) {
+    return Math.floor(getDaysFromBirth(birthDate) / 7);
+  }
+
+  function getTotalWeeks() { return state.lifespan * 52; }
+
+  function getCurrentWeek(birthDate) { return getWeeksFromBirth(birthDate) + 1; }
+
+  function getYearForWeek(weekNum) { return Math.ceil(weekNum / 52); }
+
+  function validate() {
+    var birthVal = $birthInput.value;
+    if (!birthVal) return false;
+    var parsed = new Date(birthVal + 'T00:00:00');
+    if (isNaN(parsed.getTime())) return false;
+    if (parsed >= state.today) return false;
+    return true;
+  }
+
+  function updateButton() { $btnVisualize.disabled = !validate(); }
+
+  function updateCalendarIcon() {
+    var d = state.today.getDate();
+    $calendarDay.textContent = d;
+  }
+
+  /* ====== Fun Life Stats (20 items, pick 6 random) ====== */
+
+  function generateFunStats(days, weeks) {
+    var allStats = [
+      {
+        icon: '❤️',
+        value: (days * 100000).toLocaleString(),
+        label: 'Tu corazon ha latido aproximadamente {n} veces'
       },
-      timeTracking: { weeks: {} },
-      milestones: [],
-      reflections: [],
-      streak: { current: 0, best: 0, lastActiveWeek: null },
-      reminders: { enabled: false, day: 6, time: '10:00', permissionGranted: false }
-    };
-  }
-
-  function loadState() {
-    try {
-      var raw = localStorage.getItem(LS_KEY);
-      if (raw) {
-        var saved = JSON.parse(raw);
-        var defaults = getDefaultState();
-        // Deep merge
-        saved.profile = Object.assign({}, defaults.profile, saved.profile || {});
-        saved.timeTracking = saved.timeTracking || defaults.timeTracking;
-        saved.timeTracking.weeks = saved.timeTracking.weeks || {};
-        saved.milestones = saved.milestones || [];
-        saved.reflections = saved.reflections || [];
-        saved.streak = Object.assign({}, defaults.streak, saved.streak || {});
-        saved.reminders = Object.assign({}, defaults.reminders, saved.reminders || {});
-        return saved;
+      {
+        icon: '🫁',
+        value: (days * 20000).toLocaleString(),
+        label: 'Has respirado alrededor de {n} veces'
+      },
+      {
+        icon: '👁️',
+        value: (days * 14400).toLocaleString(),
+        label: 'Has parpadeado unas {n} veces'
+      },
+      {
+        icon: '🌍',
+        value: days.toLocaleString(),
+        label: 'La Tierra ha girado {n} veces sobre su eje desde que naciste'
+      },
+      {
+        icon: '☀️',
+        value: (days * 2.57).toLocaleString() + ' M',
+        label: 'Has viajado {n} de km alrededor del Sol'
+      },
+      {
+        icon: '🌙',
+        value: Math.floor(days / 29.5).toLocaleString(),
+        label: 'La Luna ha completado {n} orbitas desde que naciste'
+      },
+      {
+        icon: '😴',
+        value: (days * 8).toLocaleString(),
+        label: 'Has dormido aproximadamente {n} horas'
+      },
+      {
+        icon: '🩸',
+        value: (days * 12000).toLocaleString(),
+        label: 'Tu sangre ha recorrido unos {n} km por tus venas'
+      },
+      {
+        icon: '💧',
+        value: (days * 2).toLocaleString() + ' L',
+        label: 'Has bebido aproximadamente {n} de agua'
+      },
+      {
+        icon: '💅',
+        value: (days * 0.01).toFixed(1) + ' cm',
+        label: 'Tus unas han crecido aproximadamente {n}'
+      },
+      {
+        icon: '💰',
+        value: '$' + (days * 86400).toLocaleString(),
+        label: 'Si cobraras $1 por segundo tendrias {n}'
+      },
+      {
+        icon: '📅',
+        value: weeks.toLocaleString(),
+        label: 'Has vivido {n} fines de semana'
+      },
+      {
+        icon: '📚',
+        value: Math.floor(weeks / 4).toLocaleString(),
+        label: 'Si leyeras 1 libro por mes habrias leido {n} libros'
+      },
+      {
+        icon: '🌅',
+        value: (weeks * 7).toLocaleString(),
+        label: 'Has visto aproximadamente {n} amaneceres'
+      },
+      {
+        icon: '💭',
+        value: (weeks * 7 * 5).toLocaleString(),
+        label: 'Has tenido alrededor de {n} suenos distintos'
+      },
+      {
+        icon: '🧬',
+        value: (days * 330).toLocaleString() + ' M',
+        label: 'Tus celulas se han renovado {n} de millones de veces'
+      },
+      {
+        icon: '🧠',
+        value: (days * 2.5).toFixed(0).toLocaleString() + ' GB',
+        label: 'Has generado alrededor de {n} de recuerdos'
+      },
+      {
+        icon: '💡',
+        value: (days * 25.9).toLocaleString() + ' B',
+        label: 'La luz ha viajado {n} de km desde que naciste'
+      },
+      {
+        icon: '🌌',
+        value: (days * 1.75).toLocaleString() + ' M',
+        label: 'El universo se ha expandido {n} de km desde tu nacimiento'
+      },
+      {
+        icon: '🚽',
+        value: Math.floor(days * 0.33).toLocaleString(),
+        label: 'Has pasado aproximadamente {n} horas en el baño'
       }
-    } catch(e) {}
-    return getDefaultState();
+    ];
+
+    // Shuffle and pick 6
+    var shuffled = allStats.slice().sort(function() { return 0.5 - Math.random(); });
+    return shuffled.slice(0, 6);
   }
 
-  function saveState(state) {
-    var toSave = Object.assign({}, state);
-    delete toSave.ui;
-    try {
-      localStorage.setItem(LS_KEY, JSON.stringify(toSave));
-    } catch(e) {}
-  }
-
-  function setPlanAndGo(plan) {
-    var state = loadState();
-    state.profile.plan = plan;
-    saveState(state);
-    window.location.href = 'app.html';
-  }
-
-  function renderHeroPreview() {
-    var grid = document.getElementById('hero-mini-grid');
-    var label = document.getElementById('hero-preview-label');
-    var today = new Date();
-    today.setHours(0, 0, 0, 0);
-    // Use a default birth date (30 years ago) for the preview
-    var birthDate = new Date(today);
-    birthDate.setFullYear(birthDate.getFullYear() - 30);
-    var lived = Math.floor((today - birthDate) / (7 * 24 * 60 * 60 * 1000));
-    var lifespan = 80;
-    var total = lifespan * 52;
-    var previewYears = Math.min(lifespan, 20);
-    var cells = previewYears * 52;
-    var remaining = Math.max(0, total - lived);
-    var pct = total > 0 ? Math.round((lived / total) * 100) : 0;
-
-    label.textContent = lived.toLocaleString() + ' vividas  ·  ' + remaining.toLocaleString() + ' por vivir  ·  ' + pct + '%';
-
+  function renderFunStats(days, weeks) {
+    var container = document.getElementById('fun-stats');
+    var stats = generateFunStats(days, weeks);
     var html = '';
-    for (var i = 0; i < cells; i++) {
-      var cls = 'mini-cell';
+    stats.forEach(function(s) {
+      html +=
+        '<div class="fun-stat-card">' +
+          '<div class="fun-stat-icon">' + s.icon + '</div>' +
+          '<div class="fun-stat-value">' + s.value + '</div>' +
+          '<div class="fun-stat-label">' + s.label.replace('{n}', s.value) + '</div>' +
+        '</div>';
+    });
+    container.innerHTML = html;
+  }
+
+  /* ====== Render Results ====== */
+
+  function renderResults() {
+    var birthVal = $birthInput.value;
+    var birthDate = new Date(birthVal + 'T00:00:00');
+    var days = getDaysFromBirth(birthDate);
+    var lived = getWeeksFromBirth(birthDate);
+    var total = getTotalWeeks();
+    var pct = total > 0 ? Math.round((lived / total) * 100) : 0;
+    var remaining = Math.max(0, total - lived);
+    var currentWeek = getCurrentWeek(birthDate);
+    var currentYear = getYearForWeek(currentWeek);
+    var livedYears = Math.floor(lived / 52);
+    var remainingYears = Math.floor(remaining / 52);
+    var pctRemaining = total > 0 ? Math.round((remaining / total) * 100) : 0;
+
+    document.getElementById('results-heading').innerHTML = 'Tu vida en <span class="name-highlight">semanas</span>';
+    document.getElementById('results-context').textContent =
+      state.today.toLocaleDateString('es-AR', { year:'numeric', month:'long', day:'numeric' }) +
+      ' · Semana ' + currentWeek.toLocaleString() + ' de ' + total.toLocaleString() +
+      ' · Año ' + currentYear;
+
+    // 4 stat cards
+    document.getElementById('stats-row').innerHTML =
+      '<div class="stat-card">' +
+        '<div class="stat-label">Semanas vividas</div>' +
+        '<div class="stat-value">' + lived.toLocaleString() + '</div>' +
+        '<div class="stat-sub">' + livedYears + ' años</div>' +
+      '</div>' +
+      '<div class="stat-card">' +
+        '<div class="stat-label">Semanas por vivir</div>' +
+        '<div class="stat-value">' + remaining.toLocaleString() + '</div>' +
+        '<div class="stat-sub">' + remainingYears + ' años estimados</div>' +
+      '</div>' +
+      '<div class="stat-card">' +
+        '<div class="stat-label">Porcentaje vivido</div>' +
+        '<div class="stat-value">' + pct + '%</div>' +
+        '<div class="stat-sub">' + pctRemaining + '% por delante</div>' +
+      '</div>' +
+      '<div class="stat-card">' +
+        '<div class="stat-label">Semanas totales</div>' +
+        '<div class="stat-value">' + total.toLocaleString() + '</div>' +
+        '<div class="stat-sub">a ' + state.lifespan + ' años de vida</div>' +
+      '</div>';
+
+    // Fun stats
+    renderFunStats(days, lived);
+
+    // Grid subtitle
+    document.getElementById('grid-subtitle').textContent =
+      '52 semanas por año · ' + state.lifespan + ' años · ' + total.toLocaleString() + ' semanas en total';
+
+    // Year labels
+    var ylHtml = '';
+    for (var y = 1; y <= state.lifespan; y++) {
+      var show = y === 1 || y % 5 === 0 || y === state.lifespan;
+      ylHtml += '<div class="year-label">' + (show ? y : '') + '</div>';
+    }
+    document.getElementById('year-labels').innerHTML = ylHtml;
+
+    // Life grid
+    var gridHtml = '';
+    for (var i = 0; i < total; i++) {
+      var cls = 'life-cell';
       if (i === lived) cls += ' current';
       else if (i < lived) cls += ' lived';
       else cls += ' future';
-      html += '<div class="' + cls + '"></div>';
+      gridHtml += '<div class="' + cls + '" title="Semana ' + (i + 1) + '"></div>';
     }
-    grid.innerHTML = html;
-  }
+    document.getElementById('life-grid').innerHTML = gridHtml;
 
-  // Theme toggle
-  function getTheme() {
-    try {
-      var raw = localStorage.getItem(LS_KEY);
-      if (raw) {
-        var data = JSON.parse(raw);
-        return (data.profile && data.profile.theme) || 'system';
-      }
-    } catch(e) {}
-    return 'system';
-  }
-
-  function getResolvedTheme() {
-    var theme = getTheme();
-    if (theme === 'dark') return 'dark';
-    if (theme === 'light') return 'light';
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
-    return 'light';
-  }
-
-  function applyTheme(theme) {
-    if (theme === 'dark') {
-      document.documentElement.dataset.theme = 'dark';
-    } else if (theme === 'light') {
-      document.documentElement.dataset.theme = 'light';
-    } else {
-      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        document.documentElement.dataset.theme = 'dark';
-      } else {
-        document.documentElement.dataset.theme = 'light';
-      }
-    }
-  }
-
-  function updateToggleIcon() {
-    var btn = document.getElementById('theme-toggle');
-    var theme = getTheme();
-    var resolved = getResolvedTheme();
-    if (theme === 'system') {
-      btn.innerHTML = '&#x25D1;'; // half circle = auto
-      btn.title = 'Tema: automatico (' + (resolved === 'dark' ? 'oscuro' : 'claro') + ')';
-    } else if (theme === 'dark') {
-      btn.innerHTML = '&#x25CF;'; // filled circle = dark
-      btn.title = 'Tema: oscuro';
-    } else {
-      btn.innerHTML = '&#x25CB;'; // empty circle = light
-      btn.title = 'Tema: claro';
-    }
-  }
-
-  function cycleTheme() {
-    var state = loadState();
-    var current = state.profile.theme || 'system';
-    var next = current === 'system' ? 'dark' : current === 'dark' ? 'light' : 'system';
-    state.profile.theme = next;
-    saveState(state);
-    applyTheme(next);
-    updateToggleIcon();
-  }
-
-  document.getElementById('theme-toggle').addEventListener('click', cycleTheme);
-
-  // CTA buttons
-  document.getElementById('btn-start-free').addEventListener('click', function() { setPlanAndGo('free'); });
-  document.getElementById('btn-start-pro').addEventListener('click', function() { setPlanAndGo('pro'); });
-  document.getElementById('btn-cta-free').addEventListener('click', function() { setPlanAndGo('free'); });
-  document.getElementById('btn-cta-pro').addEventListener('click', function() { setPlanAndGo('pro'); });
-
-  // Listen for system preference changes (only when theme is system)
-  if (window.matchMedia) {
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function() {
-      if (getTheme() === 'system') {
-        applyTheme('system');
-        updateToggleIcon();
+    // Auto-scroll to current week
+    requestAnimationFrame(function() {
+      var currentCell = document.querySelector('.life-cell.current');
+      var scroller = document.getElementById('grid-scroll');
+      if (currentCell && scroller) {
+        var cellRect = currentCell.getBoundingClientRect();
+        var scrollerRect = scroller.getBoundingClientRect();
+        var cellCenter = (cellRect.top + cellRect.bottom) / 2;
+        var scrollerCenter = (scrollerRect.top + scrollerRect.bottom) / 2;
+        scroller.scrollTo({ top: scroller.scrollTop + cellCenter - scrollerCenter, behavior: 'smooth' });
       }
     });
   }
 
-  // Init
-  updateToggleIcon();
-  renderHeroPreview();
+  /* ====== Navigation ====== */
+
+  function showScreen(id) {
+    $screenInput.classList.remove('active');
+    $screenResults.classList.remove('active');
+    document.getElementById(id).classList.add('active');
+  }
+
+  function goToResults() {
+    if (!validate()) return;
+    var birthVal = $birthInput.value;
+    state.birthDate = new Date(birthVal + 'T00:00:00');
+    renderResults();
+    showScreen('screen-results');
+  }
+
+  function goToInput() { showScreen('screen-input'); updateCalendarIcon(); }
+  function goToLifespan() {}
+
+  /* ====== Event Listeners ====== */
+
+  $birthInput.addEventListener('input', updateButton);
+  $birthInput.addEventListener('change', updateButton);
+  $btnVisualize.addEventListener('click', goToResults);
+  $btnBack.addEventListener('click', goToInput);
+
+  document.getElementById('config-form').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !$btnVisualize.disabled) { e.preventDefault(); goToResults(); }
+  });
+
+  updateButton();
 })();
 </script>
 
