@@ -532,23 +532,23 @@
       { icon: '🫁', value: (days * 20000).toLocaleString(), label: 'Has respirado alrededor de {n} veces' },
       { icon: '👁️', value: (days * 14400).toLocaleString(), label: 'Has parpadeado unas {n} veces' },
       { icon: '🌍', value: days.toLocaleString(), label: 'La Tierra ha girado {n} veces sobre su eje desde que naciste' },
-      { icon: '☀️', value: (days * 2.57).toLocaleString() + ' M', label: 'Has viajado {n} de km alrededor del Sol' },
+      { icon: '☀️', value: (days * 2570000).toLocaleString() + ' km', label: 'Has viajado {n} alrededor del Sol' },
       { icon: '🌙', value: Math.floor(days / 29.5).toLocaleString(), label: 'La Luna ha completado {n} orbitas desde que naciste' },
       { icon: '😴', value: (days * 8).toLocaleString(), label: 'Has dormido aproximadamente {n} horas' },
       { icon: '🩸', value: (days * 12000).toLocaleString(), label: 'Tu sangre ha recorrido unos {n} km por tus venas' },
       { icon: '💧', value: (days * 2).toLocaleString() + ' L', label: 'Has bebido aproximadamente {n} de agua' },
-      { icon: '💅', value: (days * 0.01).toFixed(1) + ' cm', label: 'Tus unas han crecido aproximadamente {n}' },
+      { icon: '💅', value: Math.round(days * 0.01) + ' cm', label: 'Tus unas han crecido aproximadamente {n}' },
       { icon: '💰', value: '$' + (days * 86400).toLocaleString(), label: 'Si cobraras $1 por segundo tendrias {n}' },
       { icon: '📅', value: weeks.toLocaleString(), label: 'Has vivido {n} fines de semana' },
       { icon: '📚', value: Math.floor(weeks / 4).toLocaleString(), label: 'Si leyeras 1 libro por mes habrias leido {n} libros' },
       { icon: '🌅', value: (weeks * 7).toLocaleString(), label: 'Has visto aproximadamente {n} amaneceres' },
       { icon: '💭', value: (weeks * 7 * 5).toLocaleString(), label: 'Has tenido alrededor de {n} suenos distintos' },
-      { icon: '🧬', value: (days * 330).toLocaleString() + ' M', label: 'Tus celulas se han renovado {n} de millones de veces' },
+      { icon: '🧬', value: (days * 330000000).toLocaleString(), label: 'Tus celulas se han renovado aproximadamente {n} veces' },
       { icon: '🧠', value: (days * 2.5).toFixed(0).toLocaleString() + ' GB', label: 'Has generado alrededor de {n} de recuerdos' },
-      { icon: '💡', value: (days * 25.9).toLocaleString() + ' B', label: 'La luz ha viajado {n} de km desde que naciste' },
-      { icon: '🌌', value: (days * 1.75).toLocaleString() + ' M', label: 'El universo se ha expandido {n} de km desde tu nacimiento' },
+      { icon: '💡', value: (days * 25900000000).toLocaleString() + ' km', label: 'La luz ha viajado {n} desde que naciste' },
+      { icon: '🌌', value: (days * 1750000).toLocaleString() + ' km', label: 'El universo se ha expandido {n} desde tu nacimiento' },
       { icon: '🚽', value: Math.floor(days * 0.33).toLocaleString(), label: 'Has pasado aproximadamente {n} horas en el baño' },
-      { icon: '💇', value: (days * 0.035).toFixed(1) + ' m', label: 'Tu cabello ha crecido aproximadamente {n}' }
+      { icon: '💇', value: Math.round(days * 0.035) + ' m', label: 'Tu cabello ha crecido aproximadamente {n}' }
     ];
   }
 
