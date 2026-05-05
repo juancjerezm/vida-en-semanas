@@ -1,0 +1,1655 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vida en Semanas · Dashboard</title>
+<link rel="stylesheet" href="shared.css">
+<!-- Blocking dark mode FOUC prevention -->
+<script>
+(function(){
+  try {
+    var raw = localStorage.getItem('vida-en-semanas');
+    if (raw) {
+      var data = JSON.parse(raw);
+      var theme = data.profile && data.profile.theme;
+      if (theme === 'dark') {
+        document.documentElement.dataset.theme = 'dark';
+      } else if (theme === 'light') {
+        document.documentElement.dataset.theme = 'light';
+      } else {
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+          document.documentElement.dataset.theme = 'dark';
+        }
+      }
+    } else {
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    }
+  } catch(e) {}
+})();
+</script>
+<style>
+  /* Inline additions not in shared.css */
+  .tracking-card .slider-group input[type="range"] { flex: 1; }
+  .app-container { min-height: 100dvh; display: flex; flex-direction: column; }
+  .tab-content { flex: 1; }
+</style>
+</head>
+<body>
+
+<div class="app-container">
+
+<!-- ===== Header ===== -->
+<header class="app-header" aria-label="Cabecera del dashboard">
+  <div class="header-left">
+    <span class="header-wordmark">Vida en <span class="accent-word">Semanas</span></span>
+    <span class="user-greeting" id="user-greeting"></span>
+  </div>
+  <div class="header-right">
+    <span class="streak-badge" id="streak-badge" title="Racha de actividad"></span>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Cambiar tema visual">&#x25D1;</button>
+  </div>
+</header>
+
+<!-- ===== Tab Bar ===== -->
+<nav class="tab-bar" id="tab-bar" aria-label="Navegacion principal">
+  <button class="tab-btn active" data-tab="resumen">Resumen</button>
+  <button class="tab-btn" data-tab="actividad">Actividad</button>
+  <button class="tab-btn" data-tab="reflexiones">Reflexiones</button>
+</nav>
+
+<!-- ===== Tab: Resumen ===== -->
+<section class="tab-content active" id="tab-resumen" aria-label="Resumen">
+  <div class="tab-inner">
+
+    <!-- Profile editor -->
+    <div class="profile-editor collapsed" id="profile-editor">
+      <div class="profile-editor-header" id="profile-editor-header">
+        <span class="profile-editor-title" id="profile-editor-title">Tu perfil</span>
+        <span class="profile-editor-toggle" id="profile-editor-toggle">Editar</span>
+      </div>
+      <div class="profile-editor-body">
+        <div class="field">
+          <label for="profile-name">Tu nombre <span style="color:var(--muted);font-weight:400;">(opcional)</span></label>
+          <input type="text" id="profile-name" placeholder="Ej: Martina" maxlength="40" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="profile-birth">Fecha de nacimiento</label>
+          <input type="date" id="profile-birth">
+        </div>
+        <div class="slider-group">
+          <div class="slider-header">
+            <label for="profile-lifespan">Esperanza de vida estimada</label>
+            <span class="slider-value" id="lifespan-value">80 años</span>
+          </div>
+          <input type="range" id="profile-lifespan" min="60" max="100" value="80" step="1">
+          <div class="slider-labels"><span>60</span><span>70</span><span>80</span><span>90</span><span>100</span></div>
+        </div>
+        <button class="btn-primary" id="btn-save-profile">Guardar</button>
+        <div id="profile-prompt" style="display:none;font-size:13px;color:var(--muted);padding:0.5rem 0.75rem;background:var(--accent-subtle);border-radius:var(--radius-sm);">Configura tu fecha de nacimiento para empezar</div>
+      </div>
+    </div>
+
+    <!-- Stats row -->
+    <div class="stats-row" id="stats-row" aria-label="Resumen numerico"></div>
+
+    <!-- Life grid -->
+    <div class="grid-card" id="grid-card">
+      <div class="grid-card-header">
+        <div>
+          <div class="grid-card-title">Cada cuadrado es una semana de tu vida</div>
+          <div class="grid-card-subtitle" id="grid-subtitle"></div>
+        </div>
+        <button class="btn-small" id="export-pdf-btn" title="Exportar a PDF">Exportar PDF</button>
+      </div>
+      <div class="grid-scroll" id="grid-scroll">
+        <div class="life-grid-wrapper">
+          <div class="year-labels" id="year-labels"></div>
+          <div class="life-grid" id="life-grid" aria-label="Calendario de vida"></div>
+        </div>
+      </div>
+      <div class="grid-legend" id="grid-legend">
+        <div class="legend-item"><span class="legend-dot" style="background:var(--accent)"></span> Vividas</div>
+        <div class="legend-item"><span class="legend-dot" style="background:oklch(45% 0.18 255);outline:2px solid oklch(45% 0.18 255);outline-offset:1px"></span> Esta semana</div>
+        <div class="legend-item"><span class="legend-dot" style="background:var(--border)"></span> Por vivir</div>
+        <div class="legend-item" id="legend-milestone" style="display:none;"><span class="legend-dot" style="background:var(--accent-milestone);border:1px solid oklch(55% 0.15 65)"></span> Hitos</div>
+      </div>
+    </div>
+
+    <!-- Settings area (reminders + plan) -->
+    <div class="settings-area" id="settings-area">
+      <div class="settings-title">Configuracion</div>
+      <div id="reminders-section"></div>
+      <hr class="section-divider">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;">
+        <div>
+          <span style="font-size:13px;">Plan actual: </span>
+          <span style="font-weight:500;font-family:var(--font-mono);" id="current-plan-label">Gratis</span>
+        </div>
+        <div style="display:flex;gap:0.5rem;">
+          <button class="btn-small" id="btn-plan-free">Gratis</button>
+          <button class="btn-small" id="btn-plan-pro" style="color:var(--accent);border-color:var(--accent);">Pro $4/mes</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ===== Tab: Actividad ===== -->
+<section class="tab-content" id="tab-actividad" aria-label="Actividad">
+  <div class="tab-inner">
+
+    <!-- Time tracking -->
+    <div class="content-section">
+      <div class="content-section-title">Tracking de tiempo semanal</div>
+      <div class="week-selector" id="week-selector">
+        <button class="week-nav-btn" id="week-prev" aria-label="Semana anterior">&#x25C0;</button>
+        <span class="week-label" id="week-label"><span id="week-label-main">—</span><span class="week-hint" id="week-hint"></span></span>
+        <button class="week-nav-btn" id="week-next" aria-label="Semana siguiente">&#x25B6;</button>
+      </div>
+      <div class="tracking-card">
+        <div class="tracking-sliders" id="tracking-sliders"></div>
+        <div class="tracking-save-row">
+          <button class="btn-primary" id="btn-save-tracking">Guardar semana</button>
+          <span class="save-confirmation" id="tracking-save-conf">Guardado</span>
+        </div>
+        <div class="warning-banner" id="tracking-warning" style="display:none;">Supera las horas de una semana (168h)</div>
+        <div class="readonly-label" id="tracking-readonly" style="display:none;"></div>
+      </div>
+    </div>
+
+    <!-- Streak dots (inline on Actividad tab too) -->
+    <div class="content-section">
+      <div class="content-section-title">Racha de actividad</div>
+      <div id="streak-detail">
+        <div style="font-size:14px;margin-bottom:0.5rem;"><span id="streak-current-detail">0 semanas activo</span> · <span style="color:var(--muted);" id="streak-best-detail">Mejor: 0</span></div>
+        <div class="streak-dots" id="streak-dots"></div>
+        <div id="streak-pro-hint" style="font-size:11px;color:var(--muted);margin-top:0.25rem;"></div>
+      </div>
+    </div>
+
+    <!-- Life milestones -->
+    <div class="content-section" id="milestones-section">
+      <div class="content-section-title">Hitos de vida</div>
+      <div class="milestones-section">
+        <div class="milestone-list" id="milestone-list"></div>
+        <div id="milestone-form-container"></div>
+        <div id="milestone-upgrade" style="display:none;"></div>
+      </div>
+    </div>
+
+    <!-- Balance de tiempo -->
+    <div class="content-section" id="balance-section">
+      <div class="content-section-title">Balance de tiempo</div>
+      <div id="balance-content"></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ===== Tab: Reflexiones ===== -->
+<section class="tab-content" id="tab-reflexiones" aria-label="Reflexiones">
+  <div class="tab-inner">
+
+    <div class="content-section">
+      <div class="content-section-title">Reflexion semanal</div>
+      <div class="reflection-form">
+        <div class="reflection-week-label">
+          <span id="reflection-week-title">Semana actual</span>
+          <span class="mono" id="reflection-week-key"></span>
+        </div>
+        <textarea id="reflection-textarea" placeholder="Que paso esta semana? Que aprendiste? Como te sentis?" rows="6"></textarea>
+        <div class="tracking-save-row">
+          <button class="btn-primary" id="btn-save-reflection">Guardar</button>
+          <span class="save-confirmation" id="reflection-save-conf">Guardado</span>
+          <span class="draft-indicator" id="draft-indicator">Borrador guardado</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="content-section">
+      <div class="content-section-title">Historial</div>
+      <div class="reflection-list" id="reflection-list"></div>
+      <div id="reflection-upgrade" style="display:none;"></div>
+    </div>
+
+  </div>
+</section>
+
+</div><!-- /app-container -->
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Confirm dialog container -->
+<div id="confirm-container"></div>
+
+<script>
+(function(){
+  'use strict';
+
+  // ================================================================
+  //  T4: STATE ENGINE + FEATURE GATING
+  // ================================================================
+
+  var LS_KEY = 'vida-en-semanas';
+
+  function getDefaultState() {
+    return {
+      profile: {
+        name: '',
+        birthDate: null,
+        lifespan: 80,
+        plan: 'free',
+        theme: 'system'
+      },
+      timeTracking: { weeks: {} },
+      milestones: [],
+      reflections: [],
+      streak: { current: 0, best: 0, lastActiveWeek: null },
+      reminders: { enabled: false, day: 6, time: '10:00', permissionGranted: false }
+    };
+  }
+
+  var state = getDefaultState();
+
+  function loadState() {
+    try {
+      var raw = localStorage.getItem(LS_KEY);
+      if (raw) {
+        var saved = JSON.parse(raw);
+        var defaults = getDefaultState();
+        saved.profile = Object.assign({}, defaults.profile, saved.profile || {});
+        saved.timeTracking = saved.timeTracking || { weeks: {} };
+        if (!saved.timeTracking.weeks) saved.timeTracking.weeks = {};
+        saved.milestones = saved.milestones || [];
+        saved.reflections = saved.reflections || [];
+        saved.streak = Object.assign({}, defaults.streak, saved.streak || {});
+        saved.reminders = Object.assign({}, defaults.reminders, saved.reminders || {});
+        state = saved;
+      }
+    } catch(e) {
+      state = getDefaultState();
+    }
+    // Restore session UI state
+    state.ui = {};
+    var savedTab = sessionStorage.getItem('activeTab');
+    state.ui.activeTab = savedTab || 'resumen';
+    var savedWeek = sessionStorage.getItem('activeWeek');
+    state.ui.activeWeek = savedWeek || getCurrentISOWeekKey();
+  }
+
+  function saveState() {
+    var toSave = JSON.parse(JSON.stringify(state));
+    delete toSave.ui;
+    try { localStorage.setItem(LS_KEY, JSON.stringify(toSave)); } catch(e) {}
+  }
+
+  function updateState(path, value) {
+    var parts = path.split('.');
+    var obj = state;
+    for (var i = 0; i < parts.length - 1; i++) {
+      if (!(parts[i] in obj)) obj[parts[i]] = {};
+      obj = obj[parts[i]];
+    }
+    obj[parts[parts.length - 1]] = value;
+    saveState();
+    renderTab();
+  }
+
+  function isPro() {
+    return state.profile.plan === 'pro';
+  }
+
+  function showUpgradePrompt(featureName) {
+    return '<div class="upgrade-prompt">' +
+      '<div class="upgrade-prompt-title">' + featureName + '</div>' +
+      '<div class="upgrade-prompt-desc">Esta funcionalidad es exclusiva de Pro. Obtene acceso ilimitado con todas las features.</div>' +
+      '<button class="btn-primary" onclick="window._upgradeToPro()">Pasate a Pro por $4/mes</button>' +
+      '</div>';
+  }
+
+  window._upgradeToPro = function() {
+    state.profile.plan = 'pro';
+    saveState();
+    showToast('Bienvenido a Pro. Disfruta todas las features.');
+    renderTab();
+  };
+
+  window._setPlanFree = function() {
+    state.profile.plan = 'free';
+    saveState();
+    showToast('Plan cambiado a Gratis.');
+    renderTab();
+  };
+
+  // ================================================================
+  //  ISO WEEK UTILITIES
+  // ================================================================
+
+  function getISOWeekKey(d) {
+    var date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
+    var yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+    var weekNo = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+    return date.getUTCFullYear() + '-W' + String(weekNo).padStart(2, '0');
+  }
+
+  function getCurrentISOWeekKey() {
+    return getISOWeekKey(new Date());
+  }
+
+  function parseWeekKey(key) {
+    var m = key.match(/^(\d{4})-W(\d{2})$/);
+    if (!m) return null;
+    return { year: parseInt(m[1], 10), week: parseInt(m[2], 10) };
+  }
+
+  function getAdjacentWeek(weekKey, delta) {
+    var d = getFirstDayOfWeek(weekKey);
+    d.setDate(d.getDate() + (delta * 7));
+    return getISOWeekKey(d);
+  }
+
+  function getFirstDayOfWeek(weekKey) {
+    var p = parseWeekKey(weekKey);
+    if (!p) return new Date();
+    var simple = new Date(p.year, 0, 1 + (p.week - 1) * 7);
+    var dayOfWeek = simple.getDay();
+    var diff = simple.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+    return new Date(p.year, 0, diff);
+  }
+
+  function getWeekDateRange(weekKey) {
+    var p = parseWeekKey(weekKey);
+    if (!p) return { start: '', end: '' };
+    var start = getFirstDayOfWeek(weekKey);
+    var end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    var months = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    return {
+      start: start.getDate() + ' de ' + months[start.getMonth()],
+      end: end.getDate() + ' de ' + months[end.getMonth()]
+    };
+  }
+
+  function getSortedWeekKeys() {
+    return Object.keys(state.timeTracking.weeks).sort();
+  }
+
+  function isWeekReadOnly(weekKey) {
+    var currentWeek = getCurrentISOWeekKey();
+    return weekKey !== currentWeek;
+  }
+
+  // ================================================================
+  //  T5: TAB NAVIGATION + HASH ROUTING
+  // ================================================================
+
+  function switchTab(tabName) {
+    state.ui.activeTab = tabName;
+    sessionStorage.setItem('activeTab', tabName);
+
+    document.querySelectorAll('.tab-btn').forEach(function(btn) {
+      btn.classList.toggle('active', btn.dataset.tab === tabName);
+    });
+
+    document.querySelectorAll('.tab-content').forEach(function(section) {
+      section.classList.toggle('active', section.id === 'tab-' + tabName);
+    });
+
+    renderTab();
+
+    // Update hash without reload
+    if (window.location.hash !== '#' + tabName) {
+      history.replaceState(null, '', '#' + tabName);
+    }
+  }
+
+  function initTabs() {
+    document.querySelectorAll('.tab-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        switchTab(btn.dataset.tab);
+      });
+    });
+
+    // Hash routing on load
+    var hash = window.location.hash.replace('#', '');
+    if (hash && ['resumen','actividad','reflexiones'].indexOf(hash) !== -1) {
+      state.ui.activeTab = hash;
+    }
+  }
+
+  // ================================================================
+  //  T5: PROFILE EDITOR
+  // ================================================================
+
+  function initProfileEditor() {
+    var editor = document.getElementById('profile-editor');
+    var header = document.getElementById('profile-editor-header');
+    var toggle = document.getElementById('profile-editor-toggle');
+    var title = document.getElementById('profile-editor-title');
+    var prompt = document.getElementById('profile-prompt');
+    var nameInput = document.getElementById('profile-name');
+    var birthInput = document.getElementById('profile-birth');
+    var lifespanInput = document.getElementById('profile-lifespan');
+    var lifespanValue = document.getElementById('lifespan-value');
+    var saveBtn = document.getElementById('btn-save-profile');
+
+    function updateEditorState() {
+      nameInput.value = state.profile.name || '';
+      birthInput.value = state.profile.birthDate || '';
+      lifespanInput.value = state.profile.lifespan;
+      lifespanValue.textContent = state.profile.lifespan + ' años';
+
+      if (!state.profile.birthDate) {
+        editor.classList.remove('collapsed');
+        title.textContent = 'Configura tu perfil';
+        toggle.textContent = 'Ocultar';
+        prompt.style.display = 'block';
+      } else {
+        editor.classList.add('collapsed');
+        title.textContent = state.profile.name ? 'Perfil de ' + state.profile.name : 'Tu perfil';
+        toggle.textContent = 'Editar';
+        prompt.style.display = 'none';
+      }
+    }
+
+    header.addEventListener('click', function() {
+      editor.classList.toggle('collapsed');
+      if (editor.classList.contains('collapsed')) {
+        toggle.textContent = 'Editar';
+      } else {
+        toggle.textContent = 'Ocultar';
+      }
+    });
+
+    lifespanInput.addEventListener('input', function() {
+      lifespanValue.textContent = lifespanInput.value + ' años';
+    });
+
+    saveBtn.addEventListener('click', function() {
+      var name = nameInput.value.trim();
+      var birthVal = birthInput.value;
+      var lifespan = parseInt(lifespanInput.value, 10);
+
+      if (!birthVal) return;
+
+      var parsed = new Date(birthVal + 'T00:00:00');
+      if (isNaN(parsed.getTime())) return;
+
+      var today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (parsed >= today) return;
+
+      state.profile.name = name;
+      state.profile.birthDate = birthVal;
+      state.profile.lifespan = lifespan;
+      saveState();
+      editor.classList.add('collapsed');
+      toggle.textContent = 'Editar';
+      prompt.style.display = 'none';
+      title.textContent = name ? 'Perfil de ' + name : 'Tu perfil';
+      renderTab();
+    });
+
+    updateEditorState();
+  }
+
+  // ================================================================
+  //  SHARED UTILITY: GET WEEKS FROM BIRTH
+  // ================================================================
+
+  function getWeeksFromBirth() {
+    if (!state.profile.birthDate) return 0;
+    var birth = new Date(state.profile.birthDate + 'T00:00:00');
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    var ms = today.getTime() - birth.getTime();
+    return Math.max(0, Math.floor(ms / (7 * 24 * 60 * 60 * 1000)));
+  }
+
+  function getTotalWeeks() {
+    return state.profile.lifespan * 52;
+  }
+
+  // ================================================================
+  //  T8: LIFE GRID + STATS CARDS
+  // ================================================================
+
+  function renderLifeGrid() {
+    var statsRow = document.getElementById('stats-row');
+    var gridSubtitle = document.getElementById('grid-subtitle');
+    var yearLabels = document.getElementById('year-labels');
+    var lifeGrid = document.getElementById('life-grid');
+    var legendMilestone = document.getElementById('legend-milestone');
+
+    if (!state.profile.birthDate) {
+      statsRow.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><p>Configura tu fecha de nacimiento para ver tus estadisticas.</p></div>';
+      yearLabels.innerHTML = '';
+      lifeGrid.innerHTML = '';
+      gridSubtitle.textContent = '';
+      return;
+    }
+
+    var lived = getWeeksFromBirth();
+    var total = getTotalWeeks();
+    var remaining = Math.max(0, total - lived);
+    var pct = total > 0 ? Math.round((lived / total) * 100) : 0;
+    var pctRemaining = total > 0 ? Math.round((remaining / total) * 100) : 0;
+    var livedYears = Math.floor(lived / 52);
+    var remainingYears = Math.floor(remaining / 52);
+    var currentWeek = lived + 1;
+    var currentYear = Math.ceil(currentWeek / 52);
+
+    // Stats
+    statsRow.innerHTML =
+      '<div class="stat-card">' +
+        '<div class="stat-label">Semanas vividas</div>' +
+        '<div class="stat-value">' + lived.toLocaleString() + '</div>' +
+        '<div class="stat-sub">' + livedYears + ' años</div>' +
+      '</div>' +
+      '<div class="stat-card">' +
+        '<div class="stat-label">Semanas por vivir</div>' +
+        '<div class="stat-value">' + remaining.toLocaleString() + '</div>' +
+        '<div class="stat-sub">' + remainingYears + ' años estimados</div>' +
+      '</div>' +
+      '<div class="stat-card">' +
+        '<div class="stat-label">Porcentaje vivido</div>' +
+        '<div class="stat-value">' + pct + '%</div>' +
+        '<div class="stat-sub">' + pctRemaining + '% por delante</div>' +
+      '</div>' +
+      '<div class="stat-card">' +
+        '<div class="stat-label">Semanas totales</div>' +
+        '<div class="stat-value">' + total.toLocaleString() + '</div>' +
+        '<div class="stat-sub">a ' + state.profile.lifespan + ' años de vida</div>' +
+      '</div>';
+
+    gridSubtitle.textContent = '52 semanas por año · ' + state.profile.lifespan + ' años · ' + total.toLocaleString() + ' semanas en total';
+
+    // Year labels
+    var ylHtml = '';
+    for (var y = 1; y <= state.profile.lifespan; y++) {
+      var show = y === 1 || y % 5 === 0 || y === state.profile.lifespan;
+      ylHtml += '<div class="year-label">' + (show ? y : '') + '</div>';
+    }
+    yearLabels.innerHTML = ylHtml;
+
+    // Build milestone week index map
+    var milestoneWeeks = {};
+    if (state.milestones.length && state.profile.birthDate) {
+      var birth = new Date(state.profile.birthDate + 'T00:00:00');
+      state.milestones.forEach(function(m) {
+        var mDate = new Date(m.date + 'T00:00:00');
+        var weekIdx = Math.floor((mDate - birth) / (7 * 24 * 60 * 60 * 1000));
+        if (weekIdx >= 0 && weekIdx < total) {
+          milestoneWeeks[weekIdx] = m;
+        }
+      });
+    }
+
+    // Grid cells
+    var gridHtml = '';
+    for (var i = 0; i < total; i++) {
+      var cls = 'life-cell';
+      if (i === lived) cls += ' current';
+      else if (i < lived) cls += ' lived';
+      else cls += ' future';
+
+      if (milestoneWeeks[i]) {
+        cls += ' milestone';
+      }
+
+      gridHtml += '<div class="' + cls + '" title="Semana ' + (i + 1) + (milestoneWeeks[i] ? ' — ' + milestoneWeeks[i].name : '') + '"></div>';
+    }
+    lifeGrid.innerHTML = gridHtml;
+
+    // Legend
+    legendMilestone.style.display = state.milestones.length > 0 ? 'flex' : 'none';
+
+    // Update greeting
+    var greeting = document.getElementById('user-greeting');
+    var name = state.profile.name || 'Vos';
+    greeting.textContent = 'Hola, ' + name + ' · Año ' + currentYear;
+
+    // Auto-scroll
+    requestAnimationFrame(function() {
+      var currentCell = document.querySelector('.life-cell.current');
+      var scroller = document.getElementById('grid-scroll');
+      if (currentCell && scroller) {
+        var cellRect = currentCell.getBoundingClientRect();
+        var scrollerRect = scroller.getBoundingClientRect();
+        var cellCenter = (cellRect.top + cellRect.bottom) / 2;
+        var scrollerCenter = (scrollerRect.top + scrollerRect.bottom) / 2;
+        scroller.scrollTo({ top: scroller.scrollTop + cellCenter - scrollerCenter, behavior: 'smooth' });
+      }
+    });
+
+    // Update plan label
+    document.getElementById('current-plan-label').textContent = isPro() ? 'Pro ($4/mes)' : 'Gratis';
+  }
+
+  // ================================================================
+  //  T9: STREAK BADGE
+  // ================================================================
+
+  function calculateStreak() {
+    var weeks = getSortedWeekKeys();
+    var currentWeekKey = getCurrentISOWeekKey();
+
+    // Current streak: count consecutive backward from current week
+    var current = 0;
+    var checkWeek = currentWeekKey;
+    while (true) {
+      var data = state.timeTracking.weeks[checkWeek];
+      var total = data ? (data.trabajo || 0) + (data.familia || 0) + (data.ejercicio || 0) + (data.aprendizaje || 0) : 0;
+      if (total > 0) {
+        current++;
+        checkWeek = getAdjacentWeek(checkWeek, -1);
+        if (current > 104) break; // safety: max 2 years
+      } else {
+        break;
+      }
+    }
+
+    // Best streak: scan all weeks for longest consecutive run
+    var best = state.streak.best || 0;
+    var run = 0;
+    var prevWeek = null;
+    for (var i = 0; i < weeks.length; i++) {
+      var wk = weeks[i];
+      var d = state.timeTracking.weeks[wk];
+      var t = d ? (d.trabajo || 0) + (d.familia || 0) + (d.ejercicio || 0) + (d.aprendizaje || 0) : 0;
+      if (t > 0) {
+        if (prevWeek === null || wk === getAdjacentWeek(prevWeek, 1)) {
+          run++;
+        } else {
+          run = 1;
+        }
+        prevWeek = wk;
+        if (run > best) best = run;
+      } else {
+        run = 0;
+        prevWeek = null;
+      }
+    }
+
+    if (current > best) best = current;
+
+    state.streak.current = current;
+    state.streak.best = best;
+    state.streak.lastActiveWeek = current > 0 ? currentWeekKey : null;
+    saveState();
+  }
+
+  function renderStreak() {
+    calculateStreak();
+
+    var badge = document.getElementById('streak-badge');
+    var current = state.streak.current;
+    var best = state.streak.best;
+
+    if (current > 0) {
+      badge.innerHTML = current + ' sem. activo <span class="streak-best">Mejor: ' + best + '</span>';
+    } else {
+      badge.innerHTML = '0 semanas';
+    }
+
+    // Streak detail on Actividad tab
+    document.getElementById('streak-current-detail').textContent = current + ' semanas activo';
+    document.getElementById('streak-best-detail').textContent = 'Mejor: ' + best;
+
+    // Streak dots
+    var dotsContainer = document.getElementById('streak-dots');
+    var weeks = getSortedWeekKeys();
+    var currentWeekKey = getCurrentISOWeekKey();
+    var maxWeeks = isPro() ? 52 : 2;
+    var dotsHtml = '';
+
+    var checkWeeks = [];
+    for (var i = 0; i < maxWeeks; i++) {
+      var wk = i === 0 ? currentWeekKey : getAdjacentWeek(currentWeekKey, -i);
+      checkWeeks.unshift(wk);
+    }
+
+    for (var j = 0; j < checkWeeks.length; j++) {
+      var w = checkWeeks[j];
+      var data = state.timeTracking.weeks[w];
+      var total = data ? (data.trabajo || 0) + (data.familia || 0) + (data.ejercicio || 0) + (data.aprendizaje || 0) : 0;
+      dotsHtml += '<span class="streak-dot ' + (total > 0 ? 'active' : 'inactive') + '" title="' + w + ': ' + (total > 0 ? total.toFixed(1) + 'h' : 'sin actividad') + '"></span>';
+    }
+
+    if (weeks.length === 0) {
+      dotsHtml = '<span style="font-size:12px;color:var(--muted);">Registra tu primera semana</span>';
+    }
+
+    dotsContainer.innerHTML = dotsHtml;
+
+    var proHint = document.getElementById('streak-pro-hint');
+    if (!isPro() && weeks.length > 0) {
+      proHint.textContent = 'Pro: historial completo de racha';
+    } else {
+      proHint.textContent = '';
+    }
+  }
+
+  // ================================================================
+  //  T7: TIME TRACKING
+  // ================================================================
+
+  var trackingDebounceTimer = null;
+
+  function renderTimeTracking() {
+    var weekKey = state.ui.activeWeek;
+    var currentWeek = getCurrentISOWeekKey();
+    var isCurrent = weekKey === currentWeek;
+    var isReadOnly = !isCurrent;
+    var data = state.timeTracking.weeks[weekKey] || { trabajo: 0, familia: 0, ejercicio: 0, aprendizaje: 0 };
+
+    // Week label
+    var p = parseWeekKey(weekKey);
+    var range = getWeekDateRange(weekKey);
+    document.getElementById('week-label-main').textContent = p ? 'Semana ' + p.week + ', ' + p.year : weekKey;
+    document.getElementById('week-hint').textContent = range.start + ' al ' + range.end;
+
+    // Week nav buttons
+    document.getElementById('week-prev').disabled = false;
+    document.getElementById('week-next').disabled = isCurrent;
+
+    // Readonly label
+    var roLabel = document.getElementById('tracking-readonly');
+    if (isReadOnly) {
+      roLabel.style.display = 'block';
+      roLabel.textContent = data.trabajo + data.familia + data.ejercicio + data.aprendizaje > 0
+        ? 'Semana pasada — solo lectura'
+        : 'Semana pasada sin datos — solo lectura';
+    } else {
+      roLabel.style.display = 'none';
+    }
+
+    // Sliders
+    var categories = [
+      { key: 'trabajo', label: 'Trabajo', color: 'var(--cat-trabajo)' },
+      { key: 'familia', label: 'Familia', color: 'var(--cat-familia)' },
+      { key: 'ejercicio', label: 'Ejercicio', color: 'var(--cat-ejercicio)' },
+      { key: 'aprendizaje', label: 'Aprendizaje', color: 'var(--cat-aprendizaje)' }
+    ];
+
+    var slidersHtml = '';
+    categories.forEach(function(cat) {
+      slidersHtml +=
+        '<div class="tracking-slider-item">' +
+          '<span class="tracking-cat-indicator" style="background:' + cat.color + ';"></span>' +
+          '<div class="tracking-slider-body">' +
+            '<div class="slider-group">' +
+              '<div class="slider-header">' +
+                '<label>' + cat.label + '</label>' +
+                '<span class="slider-value" id="slider-val-' + cat.key + '">' + (data[cat.key] || 0).toFixed(1) + ' h</span>' +
+              '</div>' +
+              '<input type="range" min="0" max="80" step="0.5" value="' + (data[cat.key] || 0) + '"' +
+                ' id="slider-' + cat.key + '"' +
+                ' class="tracking-slider"' +
+                ' data-cat="' + cat.key + '"' +
+                (isReadOnly ? ' disabled' : '') + '>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+    });
+    document.getElementById('tracking-sliders').innerHTML = slidersHtml;
+
+    // Slider events
+    if (!isReadOnly) {
+      document.querySelectorAll('.tracking-slider').forEach(function(slider) {
+        slider.addEventListener('input', function() {
+          var cat = this.dataset.cat;
+          document.getElementById('slider-val-' + cat).textContent = parseFloat(this.value).toFixed(1) + ' h';
+          checkHourWarning();
+          // Debounced save
+          clearTimeout(trackingDebounceTimer);
+          trackingDebounceTimer = setTimeout(function() {
+            saveTrackingSilent();
+          }, 300);
+        });
+      });
+    }
+
+    checkHourWarning();
+  }
+
+  function checkHourWarning() {
+    var total = 0;
+    ['trabajo','familia','ejercicio','aprendizaje'].forEach(function(cat) {
+      var el = document.getElementById('slider-' + cat);
+      if (el) total += parseFloat(el.value) || 0;
+    });
+    var warn = document.getElementById('tracking-warning');
+    warn.style.display = total > 168 ? 'flex' : 'none';
+  }
+
+  function saveTrackingSilent() {
+    var weekKey = state.ui.activeWeek;
+    var data = {};
+    ['trabajo','familia','ejercicio','aprendizaje'].forEach(function(cat) {
+      var el = document.getElementById('slider-' + cat);
+      data[cat] = el ? parseFloat(el.value) || 0 : 0;
+    });
+    state.timeTracking.weeks[weekKey] = data;
+    saveState();
+    showConfirmation('tracking-save-conf');
+  }
+
+  function saveTracking() {
+    saveTrackingSilent();
+    showConfirmation('tracking-save-conf');
+  }
+
+  function showConfirmation(id) {
+    var el = document.getElementById(id);
+    el.classList.add('visible');
+    setTimeout(function() { el.classList.remove('visible'); }, 1500);
+  }
+
+  // ================================================================
+  //  T10: LIFE MILESTONES CRUD
+  // ================================================================
+
+  function renderMilestones() {
+    var list = document.getElementById('milestone-list');
+    var formContainer = document.getElementById('milestone-form-container');
+    var upgradeDiv = document.getElementById('milestone-upgrade');
+    var maxMilestones = isPro() ? Infinity : 3;
+
+    // Sort by date newest first
+    var milestones = state.milestones.slice().sort(function(a, b) {
+      return b.date.localeCompare(a.date);
+    });
+
+    // List
+    if (milestones.length === 0) {
+      list.innerHTML = '<div class="empty-state"><p>Ningun hito todavia.</p></div>';
+    } else {
+      var listHtml = '';
+      milestones.forEach(function(m) {
+        var months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+        var d = new Date(m.date + 'T00:00:00');
+        var dateStr = d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+        listHtml +=
+          '<div class="milestone-item">' +
+            '<div class="milestone-item-info">' +
+              '<div class="milestone-item-name">' + escHtml(m.name) + '</div>' +
+              '<div class="milestone-item-date">' + dateStr + '</div>' +
+            '</div>' +
+            '<div class="milestone-item-actions">' +
+              '<button class="btn-small" onclick="window._editMilestone(\'' + m.id + '\')">Editar</button>' +
+              '<button class="btn-small danger" onclick="window._deleteMilestone(\'' + m.id + '\')">Borrar</button>' +
+            '</div>' +
+          '</div>';
+      });
+      list.innerHTML = listHtml;
+    }
+
+    // Add button / form
+    if (milestones.length >= maxMilestones && !isPro()) {
+      formContainer.innerHTML = '';
+      upgradeDiv.style.display = 'block';
+      upgradeDiv.innerHTML = '<div class="upgrade-prompt">' +
+        '<div class="upgrade-prompt-title">Limite alcanzado</div>' +
+        '<div class="upgrade-prompt-desc">Llegaste al limite de 3 hitos. Pasate a Pro por $4/mes para agregar hitos ilimitados.</div>' +
+        '<button class="btn-primary" onclick="window._upgradeToPro()">Pasate a Pro</button>' +
+        '</div>';
+    } else {
+      upgradeDiv.style.display = 'none';
+      formContainer.innerHTML =
+        '<button class="btn-secondary" id="btn-show-milestone-form" style="width:100%;">+ Agregar hito</button>' +
+        '<div id="milestone-form-wrapper" style="display:none;"></div>';
+    }
+  }
+
+  function showMilestoneForm(existing) {
+    var wrapper = document.getElementById('milestone-form-wrapper');
+    var nameVal = existing ? existing.name : '';
+    var dateVal = existing ? existing.date : '';
+    var idVal = existing ? existing.id : '';
+
+    wrapper.style.display = 'block';
+    wrapper.innerHTML =
+      '<div class="milestone-form">' +
+        '<div class="field">' +
+          '<label for="milestone-name">Nombre del hito</label>' +
+          '<input type="text" id="milestone-name" value="' + escAttr(nameVal) + '" maxlength="80" placeholder="Ej: Termine la facultad">' +
+        '</div>' +
+        '<div class="field">' +
+          '<label for="milestone-date">Fecha</label>' +
+          '<input type="date" id="milestone-date" value="' + dateVal + '">' +
+          '<span class="field-hint">Debe ser despues de tu fecha de nacimiento y no puede ser futura.</span>' +
+        '</div>' +
+        '<div class="milestone-form-buttons">' +
+          '<button class="btn-primary" id="btn-save-milestone" data-id="' + idVal + '">' + (existing ? 'Guardar cambios' : 'Agregar hito') + '</button>' +
+          '<button class="btn-secondary" id="btn-cancel-milestone">Cancelar</button>' +
+        '</div>' +
+      '</div>';
+
+    document.getElementById('btn-save-milestone').addEventListener('click', function() {
+      saveMilestone(this.dataset.id);
+    });
+    document.getElementById('btn-cancel-milestone').addEventListener('click', function() {
+      wrapper.style.display = 'none';
+    });
+  }
+
+  function saveMilestone(id) {
+    var name = document.getElementById('milestone-name').value.trim();
+    var dateVal = document.getElementById('milestone-date').value;
+    if (!name) return;
+    if (!dateVal) return;
+
+    var date = new Date(dateVal + 'T00:00:00');
+    if (isNaN(date.getTime())) return;
+
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (date > today) return;
+
+    if (state.profile.birthDate) {
+      var birth = new Date(state.profile.birthDate + 'T00:00:00');
+      if (date < birth) return;
+    }
+
+    if (id) {
+      // Edit
+      var idx = state.milestones.findIndex(function(m) { return m.id === id; });
+      if (idx !== -1) {
+        state.milestones[idx].name = name;
+        state.milestones[idx].date = dateVal;
+      }
+    } else {
+      // Create
+      state.milestones.push({
+        id: 'm' + Date.now(),
+        name: name,
+        date: dateVal,
+        color: null
+      });
+    }
+
+    saveState();
+    renderTab();
+  }
+
+  function deleteMilestone(id) {
+    showConfirm('Borrar este hito?', function() {
+      state.milestones = state.milestones.filter(function(m) { return m.id !== id; });
+      saveState();
+      renderTab();
+    });
+  }
+
+  window._editMilestone = function(id) {
+    var m = state.milestones.find(function(x) { return x.id === id; });
+    if (m) showMilestoneForm(m);
+  };
+
+  window._deleteMilestone = function(id) {
+    deleteMilestone(id);
+  };
+
+  // ================================================================
+  //  T11: BALANCE DE TIEMPO
+  // ================================================================
+
+  function renderBalance() {
+    var container = document.getElementById('balance-content');
+
+    if (!isPro()) {
+      container.innerHTML = showUpgradePrompt('Balance de tiempo');
+      return;
+    }
+
+    var weeks = getSortedWeekKeys();
+    var weeksWithData = weeks.filter(function(wk) {
+      var d = state.timeTracking.weeks[wk];
+      return d && (d.trabajo + d.familia + d.ejercicio + d.aprendizaje) > 0;
+    }).slice(-12);
+
+    if (weeksWithData.length === 0) {
+      container.innerHTML = '<div class="empty-state"><p>Registra horas en el tracking semanal para ver tu balance de tiempo.</p></div>';
+      return;
+    }
+
+    var cats = [
+      { key: 'trabajo', label: 'Trabajo', color: 'var(--cat-trabajo)' },
+      { key: 'familia', label: 'Familia', color: 'var(--cat-familia)' },
+      { key: 'ejercicio', label: 'Ejercicio', color: 'var(--cat-ejercicio)' },
+      { key: 'aprendizaje', label: 'Aprendizaje', color: 'var(--cat-aprendizaje)' }
+    ];
+
+    // Totals
+    var totals = { trabajo: 0, familia: 0, ejercicio: 0, aprendizaje: 0 };
+    weeksWithData.forEach(function(wk) {
+      var d = state.timeTracking.weeks[wk];
+      cats.forEach(function(c) { totals[c.key] += d[c.key] || 0; });
+    });
+
+    var html = '';
+
+    // Stacked bars
+    html += '<div class="balance-chart">';
+    weeksWithData.forEach(function(wk) {
+      var d = state.timeTracking.weeks[wk];
+      var p = parseWeekKey(wk);
+      var label = p ? 'W' + p.week : wk;
+      var total = d.trabajo + d.familia + d.ejercicio + d.aprendizaje;
+      var maxH = 168;
+
+      html += '<div class="balance-bar-row">' +
+        '<span class="balance-bar-label" title="' + wk + '">' + label + '</span>' +
+        '<div class="balance-bar-track">';
+
+      cats.forEach(function(c) {
+        var val = d[c.key] || 0;
+        var pct = maxH > 0 ? (val / maxH) * 100 : 0;
+        if (val > 0) {
+          html += '<span class="balance-bar-segment cat-' + c.key + '" style="width:' + pct.toFixed(1) + '%;" title="' + c.label + ': ' + val.toFixed(1) + 'h (' + (total > 0 ? Math.round(val/total*100) : 0) + '%)"></span>';
+        }
+      });
+
+      html += '</div></div>';
+    });
+    html += '</div>';
+
+    // Legend
+    html += '<div class="balance-legend">';
+    cats.forEach(function(c) {
+      html += '<div class="balance-legend-item"><span class="balance-legend-dot" style="background:' + c.color + ';"></span> ' + c.label + '</div>';
+    });
+    html += '</div>';
+
+    // Totals
+    html += '<div class="balance-totals">';
+    cats.forEach(function(c) {
+      html += '<div class="balance-total-item">' +
+        '<div class="balance-total-value" style="color:' + c.color + ';">' + totals[c.key].toFixed(1) + 'h</div>' +
+        '<div class="balance-total-label">' + c.label + '</div>' +
+        '</div>';
+    });
+    html += '</div>';
+
+    container.innerHTML = html;
+  }
+
+  // ================================================================
+  //  T12: REFLECTIONS JOURNAL
+  // ================================================================
+
+  var draftTimer = null;
+
+  function renderReflections() {
+    var currentWeekKey = getCurrentISOWeekKey();
+    var range = getWeekDateRange(currentWeekKey);
+    var p = parseWeekKey(currentWeekKey);
+
+    document.getElementById('reflection-week-title').textContent = 'Semana actual';
+    document.getElementById('reflection-week-key').textContent = currentWeekKey + ' (' + range.start + ' al ' + range.end + ')';
+
+    // Find existing reflection for current week
+    var existing = state.reflections.find(function(r) { return r.weekKey === currentWeekKey; });
+    var textarea = document.getElementById('reflection-textarea');
+
+    // Store week key at load for boundary detection
+    textarea.dataset.loadWeek = currentWeekKey;
+
+    if (existing) {
+      textarea.value = existing.text;
+    } else if (!textarea.value.trim()) {
+      // Only restore draft or clear if textarea is empty (preserves form state on tab switch)
+      var draft = sessionStorage.getItem('reflection-draft-' + currentWeekKey);
+      textarea.value = draft || '';
+    }
+
+    // Draft auto-save every 5 seconds
+    clearInterval(draftTimer);
+    draftTimer = setInterval(function() {
+      var val = textarea.value.trim();
+      if (val && !existing) {
+        sessionStorage.setItem('reflection-draft-' + currentWeekKey, val);
+        var indicator = document.getElementById('draft-indicator');
+        indicator.classList.add('visible');
+        setTimeout(function() { indicator.classList.remove('visible'); }, 2000);
+      }
+    }, 5000);
+
+    // Past reflections list
+    var list = document.getElementById('reflection-list');
+    var upgradeDiv = document.getElementById('reflection-upgrade');
+    var maxEntries = isPro() ? Infinity : 4;
+
+    var sorted = state.reflections.slice().sort(function(a, b) {
+      return b.weekKey.localeCompare(a.weekKey);
+    });
+
+    if (sorted.length === 0) {
+      list.innerHTML = '<div class="empty-state"><p>Ninguna reflexion todavia. Escribi la primera.</p></div>';
+    } else {
+      var visibleEntries = sorted.slice(0, maxEntries);
+      var listHtml = '';
+      visibleEntries.forEach(function(r) {
+        var rp = parseWeekKey(r.weekKey);
+        var rRange = getWeekDateRange(r.weekKey);
+        var preview = r.text.length > 100 ? r.text.substring(0, 100) + '...' : r.text;
+        var createdDate = new Date(r.createdAt);
+        var dateStr = createdDate.toLocaleDateString('es-AR', { year: 'numeric', month: 'short', day: 'numeric' });
+
+        listHtml +=
+          '<div class="reflection-entry" onclick="window._toggleReflection(\'' + r.id + '\')">' +
+            '<div class="reflection-entry-header">' +
+              '<span class="reflection-entry-week">Semana ' + (rp ? rp.week : '') + ', ' + (rp ? rp.year : '') + ' — ' + rRange.start + ' al ' + rRange.end + '</span>' +
+              '<span class="reflection-entry-date">' + dateStr + '</span>' +
+            '</div>' +
+            '<div class="reflection-entry-preview">' + escHtml(preview) + '</div>' +
+            '<div class="reflection-entry-full" id="reflection-full-' + r.id + '" style="display:none;">' + escHtml(r.text) + '</div>' +
+            '<div class="reflection-entry-actions" style="display:none;" id="reflection-actions-' + r.id + '">' +
+              '<button class="btn-small" onclick="event.stopPropagation();window._editReflection(\'' + r.id + '\')">Editar</button>' +
+              '<button class="btn-small danger" onclick="event.stopPropagation();window._deleteReflection(\'' + r.id + '\')">Borrar</button>' +
+            '</div>' +
+          '</div>';
+      });
+      list.innerHTML = listHtml;
+    }
+
+    // Upgrade notice
+    if (!isPro() && sorted.length > 4) {
+      upgradeDiv.style.display = 'block';
+      upgradeDiv.innerHTML = '<div style="text-align:center;padding:0.75rem;font-size:12px;color:var(--muted);border-top:1px solid var(--border);margin-top:0.5rem;">Las ultimas 4 reflexiones. Historial completo en Pro.</div>';
+    } else {
+      upgradeDiv.style.display = 'none';
+    }
+  }
+
+  window._toggleReflection = function(id) {
+    var full = document.getElementById('reflection-full-' + id);
+    var actions = document.getElementById('reflection-actions-' + id);
+    if (full.style.display === 'none') {
+      full.style.display = 'block';
+      actions.style.display = 'flex';
+    } else {
+      full.style.display = 'none';
+      actions.style.display = 'none';
+    }
+  };
+
+  window._editReflection = function(id) {
+    var r = state.reflections.find(function(x) { return x.id === id; });
+    if (!r) return;
+    var textarea = document.getElementById('reflection-textarea');
+    textarea.value = r.text;
+    textarea.focus();
+    // Update state to edit mode
+    textarea.dataset.editingId = id;
+    var saveBtn = document.getElementById('btn-save-reflection');
+    saveBtn.textContent = 'Actualizar';
+  };
+
+  window._deleteReflection = function(id) {
+    showConfirm('Borrar esta reflexion?', function() {
+      state.reflections = state.reflections.filter(function(r) { return r.id !== id; });
+      saveState();
+      renderTab();
+    });
+  };
+
+  function saveReflection() {
+    var textarea = document.getElementById('reflection-textarea');
+    var text = textarea.value.trim();
+    if (!text) {
+      showToast('Escribi algo antes de guardar.');
+      return;
+    }
+
+    var currentWeekKey = getCurrentISOWeekKey();
+    var loadWeek = textarea.dataset.loadWeek || currentWeekKey;
+
+    // Week boundary warning: if week changed since page load
+    if (loadWeek !== currentWeekKey && !textarea.dataset.editingId) {
+      var proceed = confirm('Cambiaste de semana. Guardar para la semana ' + currentWeekKey + '?');
+      if (!proceed) return;
+    }
+
+    var editingId = textarea.dataset.editingId;
+
+    if (editingId) {
+      var r = state.reflections.find(function(x) { return x.id === editingId; });
+      if (r) {
+        r.text = text;
+        r.updatedAt = new Date().toISOString();
+      }
+      textarea.dataset.editingId = '';
+      document.getElementById('btn-save-reflection').textContent = 'Guardar';
+    } else {
+      // Check for existing
+      var existing = state.reflections.find(function(x) { return x.weekKey === currentWeekKey; });
+      if (existing) {
+        existing.text = text;
+        existing.updatedAt = new Date().toISOString();
+      } else {
+        var months = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+        state.reflections.push({
+          id: 'r' + Date.now(),
+          weekKey: currentWeekKey,
+          text: text,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
+      }
+    }
+
+    // Clear draft
+    sessionStorage.removeItem('reflection-draft-' + currentWeekKey);
+
+    saveState();
+    showConfirmation('reflection-save-conf');
+    renderTab();
+  }
+
+  // ================================================================
+  //  T13: REMINDERS
+  // ================================================================
+
+  function renderReminders() {
+    var container = document.getElementById('reminders-section');
+
+    if (!isPro()) {
+      container.innerHTML = '<div class="upgrade-prompt" style="padding:1.25rem;">' +
+        '<div class="upgrade-prompt-title" style="font-size:14px;">Recordatorios</div>' +
+        '<div class="upgrade-prompt-desc">Recordatorios es una feature Pro. $4/mes.</div>' +
+        '<button class="btn-small" onclick="window._upgradeToPro()" style="color:var(--accent);">Actualizar a Pro</button>' +
+        '</div>';
+      return;
+    }
+
+    var rem = state.reminders;
+    var days = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
+
+    var html = '<div class="reminders-card">' +
+      '<div class="reminders-title">Recordatorios semanales</div>' +
+      '<div class="reminders-toggle">' +
+        '<span style="font-size:13px;">Activar recordatorios</span>' +
+        '<div class="toggle-switch' + (rem.enabled ? ' active' : '') + '" id="reminders-toggle" role="switch" aria-checked="' + rem.enabled + '" tabindex="0"></div>' +
+      '</div>';
+
+    html += '<div class="reminders-config"' + (rem.enabled ? '' : ' style="opacity:0.5;pointer-events:none;"') + '>' +
+      '<div class="field" style="flex:1;min-width:120px;">' +
+        '<label for="reminder-day">Dia</label>' +
+        '<select id="reminder-day">';
+    days.forEach(function(d, i) {
+      html += '<option value="' + i + '"' + (rem.day === i ? ' selected' : '') + '>' + d + '</option>';
+    });
+    html += '</select></div>' +
+      '<div class="field" style="flex:1;min-width:120px;">' +
+        '<label for="reminder-time">Hora</label>' +
+        '<input type="time" id="reminder-time" value="' + rem.time + '">' +
+      '</div>' +
+      '</div>';
+
+    // Status
+    if (rem.enabled) {
+      if (!('Notification' in window)) {
+        html += '<div style="font-size:12px;color:var(--muted);">Tu navegador no soporta notificaciones. Abri la app manualmente cada semana.</div>';
+      } else if (rem.permissionGranted) {
+        html += '<div style="font-size:12px;color:oklch(58% 0.17 145);">Notificaciones activadas. Te avisaremos cada semana.</div>';
+      } else if (rem.permissionGranted === false && Notification && Notification.permission === 'denied') {
+        html += '<div style="font-size:12px;color:var(--accent-milestone);">Permiso de notificaciones denegado. Los recordatorios apareceran como badges en la app. <button class="btn-small" id="btn-retry-permission">Reintentar</button></div>';
+      } else if (Notification && Notification.permission === 'default') {
+        html += '<button class="btn-secondary" id="btn-request-permission" style="width:100%;">Permitir notificaciones</button>';
+      }
+    }
+
+    html += '</div>';
+    container.innerHTML = html;
+
+    // Events
+    var toggle = document.getElementById('reminders-toggle');
+    if (toggle) {
+      toggle.addEventListener('click', function() {
+        state.reminders.enabled = !state.reminders.enabled;
+        if (state.reminders.enabled && Notification && Notification.permission === 'default') {
+          Notification.requestPermission().then(function(perm) {
+            state.reminders.permissionGranted = perm === 'granted';
+            saveState();
+            scheduleReminder();
+            renderReminders();
+          });
+        } else {
+          state.reminders.permissionGranted = Notification && Notification.permission === 'granted';
+          saveState();
+          if (state.reminders.enabled) scheduleReminder();
+          renderReminders();
+        }
+      });
+    }
+
+    var daySelect = document.getElementById('reminder-day');
+    var timeInput = document.getElementById('reminder-time');
+    if (daySelect) {
+      daySelect.addEventListener('change', function() {
+        state.reminders.day = parseInt(this.value, 10);
+        saveState();
+        if (state.reminders.enabled) scheduleReminder();
+      });
+    }
+    if (timeInput) {
+      timeInput.addEventListener('change', function() {
+        state.reminders.time = this.value;
+        saveState();
+        if (state.reminders.enabled) scheduleReminder();
+      });
+    }
+
+    var retryBtn = document.getElementById('btn-retry-permission');
+    if (retryBtn) {
+      retryBtn.addEventListener('click', function() {
+        if (Notification) {
+          Notification.requestPermission().then(function(perm) {
+            state.reminders.permissionGranted = perm === 'granted';
+            saveState();
+            renderReminders();
+          });
+        }
+      });
+    }
+
+    var reqBtn = document.getElementById('btn-request-permission');
+    if (reqBtn) {
+      reqBtn.addEventListener('click', function() {
+        if (Notification) {
+          Notification.requestPermission().then(function(perm) {
+            state.reminders.permissionGranted = perm === 'granted';
+            saveState();
+            if (perm === 'granted') scheduleReminder();
+            renderReminders();
+          });
+        }
+      });
+    }
+  }
+
+  function scheduleReminder() {
+    var rem = state.reminders;
+    if (!rem.enabled || !rem.permissionGranted) return;
+    if (!('Notification' in window)) return;
+
+    // Avoid duplicate scheduling across tabs
+    if (sessionStorage.getItem('reminder-scheduled') === 'true') return;
+    sessionStorage.setItem('reminder-scheduled', 'true');
+
+    var now = new Date();
+    var target = new Date();
+    target.setDate(target.getDate() + ((rem.day + 7 - target.getDay()) % 7));
+    var timeParts = rem.time.split(':');
+    target.setHours(parseInt(timeParts[0], 10), parseInt(timeParts[1], 10), 0, 0);
+
+    if (target <= now) {
+      target.setDate(target.getDate() + 7);
+    }
+
+    var delay = target.getTime() - now.getTime();
+    if (delay > 0 && delay < 7 * 24 * 60 * 60 * 1000) {
+      setTimeout(function() {
+        if (Notification.permission === 'granted') {
+          var notif = new Notification('Vida en Semanas', {
+            body: 'Como fue tu semana? Registra tu tiempo y reflexiones.',
+            icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="%234280f5"/></svg>'
+          });
+          notif.onclick = function() {
+            window.focus();
+            if (window.location.pathname.indexOf('app.html') === -1) {
+              window.open('app.html#actividad', '_blank');
+            } else {
+              switchTab('actividad');
+            }
+            notif.close();
+          };
+        }
+        sessionStorage.removeItem('reminder-scheduled');
+      }, delay);
+    }
+  }
+
+  // ================================================================
+  //  T14: DARK MODE TOGGLE
+  // ================================================================
+
+  function getTheme() {
+    return state.profile.theme || 'system';
+  }
+
+  function getResolvedTheme() {
+    var theme = getTheme();
+    if (theme === 'dark') return 'dark';
+    if (theme === 'light') return 'light';
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
+    return 'light';
+  }
+
+  function applyTheme(theme) {
+    if (theme === 'dark') {
+      document.documentElement.dataset.theme = 'dark';
+    } else if (theme === 'light') {
+      document.documentElement.dataset.theme = 'light';
+    } else {
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.dataset.theme = 'dark';
+      } else {
+        document.documentElement.dataset.theme = 'light';
+      }
+    }
+  }
+
+  function updateToggleIcon() {
+    var btn = document.getElementById('theme-toggle');
+    var theme = getTheme();
+    var resolved = getResolvedTheme();
+    if (theme === 'system') {
+      btn.innerHTML = '&#x25D1;';
+      btn.title = 'Tema: automatico (' + (resolved === 'dark' ? 'oscuro' : 'claro') + ')';
+    } else if (theme === 'dark') {
+      btn.innerHTML = '&#x25CF;';
+      btn.title = 'Tema: oscuro';
+    } else {
+      btn.innerHTML = '&#x25CB;';
+      btn.title = 'Tema: claro';
+    }
+  }
+
+  function cycleTheme() {
+    var current = state.profile.theme || 'system';
+    var next = current === 'system' ? 'dark' : current === 'dark' ? 'light' : 'system';
+    state.profile.theme = next;
+    saveState();
+    applyTheme(next);
+    updateToggleIcon();
+  }
+
+  // ================================================================
+  //  T16: PRINT / EXPORT PDF
+  // ================================================================
+
+  function initExportPDF() {
+    document.getElementById('export-pdf-btn').addEventListener('click', function() {
+      window.print();
+    });
+  }
+
+  // ================================================================
+  //  SHARED UI UTILITIES
+  // ================================================================
+
+  function showToast(msg) {
+    var toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('visible');
+    clearTimeout(toast._timeout);
+    toast._timeout = setTimeout(function() {
+      toast.classList.remove('visible');
+    }, 2000);
+  }
+
+  function showConfirm(msg, onConfirm) {
+    var container = document.getElementById('confirm-container');
+    container.innerHTML =
+      '<div class="confirm-overlay">' +
+        '<div class="confirm-dialog">' +
+          '<p>' + escHtml(msg) + '</p>' +
+          '<div class="confirm-dialog-buttons">' +
+            '<button class="btn-secondary" id="confirm-cancel">Cancelar</button>' +
+            '<button class="btn-small danger" id="confirm-ok">Borrar</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    document.getElementById('confirm-cancel').addEventListener('click', function() {
+      container.innerHTML = '';
+    });
+    document.getElementById('confirm-ok').addEventListener('click', function() {
+      container.innerHTML = '';
+      if (onConfirm) onConfirm();
+    });
+  }
+
+  function escHtml(str) {
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
+  }
+
+  function escAttr(str) {
+    return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // ================================================================
+  //  RENDER TAB DISPATCHER
+  // ================================================================
+
+  function renderTab() {
+    var tab = state.ui.activeTab;
+    if (tab === 'resumen') {
+      renderLifeGrid();
+      renderStreak();
+      renderReminders();
+    } else if (tab === 'actividad') {
+      renderTimeTracking();
+      renderStreak();
+      renderMilestones();
+      renderBalance();
+    } else if (tab === 'reflexiones') {
+      renderReflections();
+    }
+  }
+
+  // ================================================================
+  //  EVENT BINDINGS
+  // ================================================================
+
+  function bindEvents() {
+    // Tab navigation
+    initTabs();
+
+    // Profile editor
+    initProfileEditor();
+
+    // Week selector
+    document.getElementById('week-prev').addEventListener('click', function() {
+      state.ui.activeWeek = getAdjacentWeek(state.ui.activeWeek, -1);
+      sessionStorage.setItem('activeWeek', state.ui.activeWeek);
+      renderTab();
+    });
+    document.getElementById('week-next').addEventListener('click', function() {
+      var nextWeek = getAdjacentWeek(state.ui.activeWeek, 1);
+      var currentWeek = getCurrentISOWeekKey();
+      if (nextWeek <= currentWeek) {
+        state.ui.activeWeek = nextWeek;
+        sessionStorage.setItem('activeWeek', state.ui.activeWeek);
+        renderTab();
+      }
+    });
+
+    // Save tracking
+    document.getElementById('btn-save-tracking').addEventListener('click', saveTracking);
+
+    // Show milestone form
+    document.addEventListener('click', function(e) {
+      if (e.target.id === 'btn-show-milestone-form') {
+        showMilestoneForm(null);
+      }
+    });
+
+    // Save reflection
+    document.getElementById('btn-save-reflection').addEventListener('click', saveReflection);
+
+    // Plan buttons
+    document.getElementById('btn-plan-free').addEventListener('click', function() {
+      window._setPlanFree();
+    });
+    document.getElementById('btn-plan-pro').addEventListener('click', function() {
+      window._upgradeToPro();
+    });
+
+    // Theme toggle
+    document.getElementById('theme-toggle').addEventListener('click', cycleTheme);
+
+    // Export PDF
+    initExportPDF();
+
+    // System preference listener (only when theme is system)
+    if (window.matchMedia) {
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function() {
+        if (getTheme() === 'system') {
+          applyTheme('system');
+          updateToggleIcon();
+        }
+      });
+    }
+  }
+
+  // ================================================================
+  //  INIT
+  // ================================================================
+
+  function init() {
+    loadState();
+
+    // If birth date not set, expand profile editor
+    if (!state.profile.birthDate) {
+      var editor = document.getElementById('profile-editor');
+      editor.classList.remove('collapsed');
+      document.getElementById('profile-editor-toggle').textContent = 'Ocultar';
+      document.getElementById('profile-prompt').style.display = 'block';
+    }
+
+    // Set initial active week to current week
+    if (!state.ui.activeWeek) {
+      state.ui.activeWeek = getCurrentISOWeekKey();
+    }
+
+    bindEvents();
+    updateToggleIcon();
+
+    // Switch to correct tab
+    switchTab(state.ui.activeTab);
+
+    // Schedule reminder if enabled
+    if (state.reminders.enabled && state.reminders.permissionGranted) {
+      scheduleReminder();
+    }
+  }
+
+  // Start
+  init();
+
+})();
+</script>
+
+</body>
+</html>

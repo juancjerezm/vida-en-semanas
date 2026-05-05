@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vida en Semanas</title>
+<link rel="stylesheet" href="shared.css">
+<!-- Blocking dark mode FOUC prevention -->
+<script>
+(function(){
+  try {
+    var raw = localStorage.getItem('vida-en-semanas');
+    if (raw) {
+      var data = JSON.parse(raw);
+      var theme = data.profile && data.profile.theme;
+      if (theme === 'dark') {
+        document.documentElement.dataset.theme = 'dark';
+      } else if (theme === 'light') {
+        document.documentElement.dataset.theme = 'light';
+      } else {
+        // system
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+          document.documentElement.dataset.theme = 'dark';
+        }
+      }
+    } else {
+      // no data, system default
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    }
+  } catch(e) {}
+})();
+</script>
+<style>
+  .hero-preview-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1rem 1.25rem;
+    width: 100%;
+  }
+  .hero-preview-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.5rem;
+    font-size: 12px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+  }
+</style>
+</head>
+<body>
+
+<header class="landing-header" aria-label="Cabecera de la landing">
+  <button class="theme-toggle" id="theme-toggle" aria-label="Cambiar tema visual">&#x25D1;</button>
+</header>
+
+<main class="landing-page">
+
+  <!-- Hero -->
+  <section id="hero" class="hero" aria-label="Presentacion principal">
+    <h1>Cada semana de tu vida,<br>en una <span class="accent-word">sola mirada</span></h1>
+    <p>Visualiza las semanas que ya viviste y las que te quedan por delante. Sin cuentas, sin registros, sin notificaciones. Solo tu vida, representada en semanas.</p>
+    <div class="hero-grid-preview">
+      <div class="hero-preview-container">
+        <div class="hero-preview-stats">
+          <span>Vista previa</span>
+          <span id="hero-preview-label">—</span>
+        </div>
+        <div class="mini-grid" id="hero-mini-grid" aria-label="Miniatura del calendario de vida"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features" class="features-section" aria-label="Funcionalidades">
+    <h2 style="text-align:center;margin-bottom:1.5rem;">Todo lo que necesitas para ver tu vida con perspectiva</h2>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-card-icon">&#x25A6;</div>
+        <h3>Grilla de vida</h3>
+        <p>52 semanas por año, cada celda es una semana de tu vida. Pasado, presente y futuro en una sola vista.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-icon">&#x23F1;</div>
+        <h3>Tracking de tiempo</h3>
+        <p>Registra cuantas horas dedicas a trabajo, familia, ejercicio y aprendizaje cada semana.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-icon">&#x25CF;</div>
+        <h3>Racha de actividad</h3>
+        <p>Mantene la constancia. Segui tu racha de semanas activas y supera tu mejor marca personal.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-icon">&#x25C6;</div>
+        <h3>Hitos de vida</h3>
+        <p>Marcá eventos importantes en tu grilla: graduaciones, viajes, mudanzas. Tu historia en tu calendario.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-icon">&#x25AC;</div>
+        <h3>Balance de tiempo</h3>
+        <p>Visualiza como distribuiste tus horas entre las distintas areas de tu vida con graficos claros.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-icon">&#x270E;</div>
+        <h3>Reflexiones semanales</h3>
+        <p>Escribi lo que aprendiste, sentiste o lograste cada semana. Un diario personal integrado.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-icon">&#x23F0;</div>
+        <h3>Recordatorios</h3>
+        <p>El navegador te avisa cuando toca registrar tu semana. Nunca pierdas la racha.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-icon">&#x25D1;</div>
+        <h3>Modo oscuro</h3>
+        <p>Tema claro y oscuro con deteccion automatica del sistema. Comodo a cualquier hora del dia.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section id="pricing" class="pricing-section" aria-label="Planes y precios">
+    <h2>Planes simples, sin letra chica</h2>
+    <div class="pricing-grid">
+      <!-- Free -->
+      <div class="pricing-card">
+        <div class="pricing-name">Gratis</div>
+        <div class="pricing-price">$0<span>/mes</span></div>
+        <div class="pricing-features">
+          <div class="pricing-feature-row"><span class="check">&#x2713;</span> Grilla de vida + stats</div>
+          <div class="pricing-feature-row"><span class="check">&#x2713;</span> Tracking de tiempo (4 categorias)</div>
+          <div class="pricing-feature-row"><span class="check">&#x2713;</span> Racha (ultimas 2 semanas)</div>
+          <div class="pricing-feature-row"><span class="check">&#x2713;</span> Hitos de vida (3 max)</div>
+          <div class="pricing-feature-row"><span class="cross">—</span> Balance de tiempo</div>
+          <div class="pricing-feature-row"><span class="check">&#x2713;</span> Reflexiones (ultimas 4)</div>
+          <div class="pricing-feature-row"><span class="cross">—</span> Recordatorios</div>
+          <div class="pricing-feature-row"><span class="check">&#x2713;</span> Modo oscuro</div>
+        </div>
+        <div class="pricing-cta">
+          <button class="btn-primary" id="btn-start-free">Empezar gratis</button>
+        </div>
+      </div>
+
+      <!-- Pro -->
+      <div class="pricing-card featured">
+        <div class="pricing-badge">Mas popular</div>
+        <div class="pricing-name">Pro</div>
+        <div class="pricing-price">$4<span>/mes</span></div>
+        <div class="pricing-features">
+          <div class="pricing-feature-row"><span class="check">&#x2713;</span> Grilla de vida + stats</div>
+          <div class="pricing-feature-row"><span class="check">&#x2713;</span> Tracking de tiempo (4 categorias)</div>
+          <div class="pricing-feature-row"><span class="check">&#x2713;</span> Racha (historial completo)</div>
+          <div class="pricing-feature-row"><span class="check">&#x2713;</span> Hitos de vida (ilimitados)</div>
+          <div class="pricing-feature-row"><span class="check">&#x2713;</span> Balance de tiempo</div>
+          <div class="pricing-feature-row"><span class="check">&#x2713;</span> Reflexiones (historial completo)</div>
+          <div class="pricing-feature-row"><span class="check">&#x2713;</span> Recordatorios semanales</div>
+          <div class="pricing-feature-row"><span class="check">&#x2713;</span> Modo oscuro</div>
+        </div>
+        <div class="pricing-cta">
+          <button class="btn-primary" id="btn-start-pro">Proba Pro</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section id="cta" class="cta-section" aria-label="Llamado a la accion">
+    <h2>Empeza hoy, es gratis</h2>
+    <p>Tus datos quedan en tu navegador. Sin servidores, sin cuentas, sin vueltas. Solo vos y tus semanas.</p>
+    <div class="cta-buttons">
+      <button class="btn-primary" id="btn-cta-free">Empezar gratis</button>
+      <button class="btn-secondary" id="btn-cta-pro">Proba Pro por $4/mes</button>
+    </div>
+  </section>
+
+</main>
+
+<script>
+(function(){
+  'use strict';
+
+  var LS_KEY = 'vida-en-semanas';
+
+  function getDefaultState() {
+    return {
+      profile: {
+        name: '',
+        birthDate: null,
+        lifespan: 80,
+        plan: 'free',
+        theme: 'system'
+      },
+      timeTracking: { weeks: {} },
+      milestones: [],
+      reflections: [],
+      streak: { current: 0, best: 0, lastActiveWeek: null },
+      reminders: { enabled: false, day: 6, time: '10:00', permissionGranted: false }
+    };
+  }
+
+  function loadState() {
+    try {
+      var raw = localStorage.getItem(LS_KEY);
+      if (raw) {
+        var saved = JSON.parse(raw);
+        var defaults = getDefaultState();
+        // Deep merge
+        saved.profile = Object.assign({}, defaults.profile, saved.profile || {});
+        saved.timeTracking = saved.timeTracking || defaults.timeTracking;
+        saved.timeTracking.weeks = saved.timeTracking.weeks || {};
+        saved.milestones = saved.milestones || [];
+        saved.reflections = saved.reflections || [];
+        saved.streak = Object.assign({}, defaults.streak, saved.streak || {});
+        saved.reminders = Object.assign({}, defaults.reminders, saved.reminders || {});
+        return saved;
+      }
+    } catch(e) {}
+    return getDefaultState();
+  }
+
+  function saveState(state) {
+    var toSave = Object.assign({}, state);
+    delete toSave.ui;
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(toSave));
+    } catch(e) {}
+  }
+
+  function setPlanAndGo(plan) {
+    var state = loadState();
+    state.profile.plan = plan;
+    saveState(state);
+    window.location.href = 'app.html';
+  }
+
+  function renderHeroPreview() {
+    var grid = document.getElementById('hero-mini-grid');
+    var label = document.getElementById('hero-preview-label');
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    // Use a default birth date (30 years ago) for the preview
+    var birthDate = new Date(today);
+    birthDate.setFullYear(birthDate.getFullYear() - 30);
+    var lived = Math.floor((today - birthDate) / (7 * 24 * 60 * 60 * 1000));
+    var lifespan = 80;
+    var total = lifespan * 52;
+    var previewYears = Math.min(lifespan, 20);
+    var cells = previewYears * 52;
+    var remaining = Math.max(0, total - lived);
+    var pct = total > 0 ? Math.round((lived / total) * 100) : 0;
+
+    label.textContent = lived.toLocaleString() + ' vividas  ·  ' + remaining.toLocaleString() + ' por vivir  ·  ' + pct + '%';
+
+    var html = '';
+    for (var i = 0; i < cells; i++) {
+      var cls = 'mini-cell';
+      if (i === lived) cls += ' current';
+      else if (i < lived) cls += ' lived';
+      else cls += ' future';
+      html += '<div class="' + cls + '"></div>';
+    }
+    grid.innerHTML = html;
+  }
+
+  // Theme toggle
+  function getTheme() {
+    try {
+      var raw = localStorage.getItem(LS_KEY);
+      if (raw) {
+        var data = JSON.parse(raw);
+        return (data.profile && data.profile.theme) || 'system';
+      }
+    } catch(e) {}
+    return 'system';
+  }
+
+  function getResolvedTheme() {
+    var theme = getTheme();
+    if (theme === 'dark') return 'dark';
+    if (theme === 'light') return 'light';
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
+    return 'light';
+  }
+
+  function applyTheme(theme) {
+    if (theme === 'dark') {
+      document.documentElement.dataset.theme = 'dark';
+    } else if (theme === 'light') {
+      document.documentElement.dataset.theme = 'light';
+    } else {
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.dataset.theme = 'dark';
+      } else {
+        document.documentElement.dataset.theme = 'light';
+      }
+    }
+  }
+
+  function updateToggleIcon() {
+    var btn = document.getElementById('theme-toggle');
+    var theme = getTheme();
+    var resolved = getResolvedTheme();
+    if (theme === 'system') {
+      btn.innerHTML = '&#x25D1;'; // half circle = auto
+      btn.title = 'Tema: automatico (' + (resolved === 'dark' ? 'oscuro' : 'claro') + ')';
+    } else if (theme === 'dark') {
+      btn.innerHTML = '&#x25CF;'; // filled circle = dark
+      btn.title = 'Tema: oscuro';
+    } else {
+      btn.innerHTML = '&#x25CB;'; // empty circle = light
+      btn.title = 'Tema: claro';
+    }
+  }
+
+  function cycleTheme() {
+    var state = loadState();
+    var current = state.profile.theme || 'system';
+    var next = current === 'system' ? 'dark' : current === 'dark' ? 'light' : 'system';
+    state.profile.theme = next;
+    saveState(state);
+    applyTheme(next);
+    updateToggleIcon();
+  }
+
+  document.getElementById('theme-toggle').addEventListener('click', cycleTheme);
+
+  // CTA buttons
+  document.getElementById('btn-start-free').addEventListener('click', function() { setPlanAndGo('free'); });
+  document.getElementById('btn-start-pro').addEventListener('click', function() { setPlanAndGo('pro'); });
+  document.getElementById('btn-cta-free').addEventListener('click', function() { setPlanAndGo('free'); });
+  document.getElementById('btn-cta-pro').addEventListener('click', function() { setPlanAndGo('pro'); });
+
+  // Listen for system preference changes (only when theme is system)
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function() {
+      if (getTheme() === 'system') {
+        applyTheme('system');
+        updateToggleIcon();
+      }
+    });
+  }
+
+  // Init
+  updateToggleIcon();
+  renderHeroPreview();
+})();
+</script>
+
+</body>
+</html>
