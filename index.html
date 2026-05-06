@@ -727,6 +727,28 @@
     if (e.key === 'Enter' && !$btnVisualize.disabled) { e.preventDefault(); goToResults(); }
   });
 
+  /* ====== Resize — recalc grid columns ====== */
+  var resizeTimer;
+  window.addEventListener('resize', function() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function() {
+      var grid = document.getElementById('life-grid');
+      if (!grid || !grid.hasChildNodes()) return; // grid not rendered yet
+      if (window.innerWidth > 700) {
+        var cellSize = 8;
+        var gap = 1;
+        var style = getComputedStyle(grid);
+        var padX = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+        var available = grid.clientWidth - padX;
+        var cols = Math.floor((available + gap) / (cellSize + gap));
+        if (cols < 1) cols = 1;
+        grid.style.gridTemplateColumns = 'repeat(' + cols + ', ' + cellSize + 'px)';
+      } else {
+        grid.style.gridTemplateColumns = '';
+      }
+    }, 50);
+  });
+
   updateButton();
 })();
 </script>
