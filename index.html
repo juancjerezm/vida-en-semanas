@@ -230,11 +230,11 @@
 
   .fun-stat-value {
     font-family: var(--font-mono);
-    font-size: clamp(14px, 1.6vw, 18px);
+    font-size: clamp(15px, 1.5vw, 20px);
     font-weight: 500;
     font-variant-numeric: tabular-nums;
-    line-height: 1.15;
-    word-break: break-all;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
   }
 
   .fun-stat-label {
@@ -555,8 +555,8 @@
       { icon: '💡', value: (days * 25900000000).toLocaleString() + ' km', label: 'La luz ha viajado {n} desde que naciste' },
       { icon: '🌠', value: (days * 19000000).toLocaleString() + ' km', label: 'La Via Lactea se ha desplazado {n} con vos adentro' },
       { icon: '🌈', value: hours.toLocaleString() + ' h', label: 'Has estado vivo un total de {n}' },
-      { icon: '⏱️', value: (days * 86400).toLocaleString(), label: 'Eso son {n} segundos' },
-      { icon: '🕐', value: (days * 1440).toLocaleString(), label: 'O {n} minutos, dicho de otra forma' },
+      { icon: '⏱️', value: (days * 86400).toLocaleString(), label: 'Has vivido {n} segundos' },
+      { icon: '🕐', value: (days * 1440).toLocaleString(), label: 'Has vivido un total de {n} minutos' },
       { icon: '📆', value: months.toLocaleString(), label: 'Que equivalen a aproximadamente {n} meses' },
       { icon: '❄️', value: Math.floor(days / 91).toLocaleString(), label: 'Has vivido alrededor de {n} estaciones del año' },
       { icon: '🪐', value: Math.floor(days / 687).toLocaleString(), label: 'En Marte tendrías {n} años de edad' },
