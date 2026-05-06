@@ -300,7 +300,7 @@
 
   .life-grid {
     display: grid;
-    grid-template-columns: repeat(52, 4px);
+    /* grid-template-columns set via JS on desktop */
     gap: 1px;
     margin: 0 auto;
     padding: 0 0.5rem 0.75rem;
@@ -310,18 +310,18 @@
   @media (max-width: 420px) { .life-grid { max-width: 340px; } }
 
   .life-cell {
-    width: 4px;
-    height: 4px;
-    border-radius: 1px;
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
     transition: transform 0.1s;
     cursor: default;
   }
 
   .life-cell.lived   { background: var(--fg); }
-  .life-cell.current { background: var(--fg); outline: 1px solid var(--fg); outline-offset: 1px; border-radius: 1px; position: relative; z-index: 1; }
+  .life-cell.current { background: var(--fg); outline: 2px solid var(--fg); outline-offset: 2px; border-radius: 3px; position: relative; z-index: 1; }
   .life-cell.future  { background: var(--border); }
 
-  .life-cell:hover { transform: scale(2); z-index: 2; }
+  .life-cell:hover { transform: scale(1.8); z-index: 2; }
 
   @media (max-width: 700px) {
     .life-cell {
@@ -663,7 +663,21 @@
     document.getElementById('grid-subtitle').textContent =
       '52 semanas por año · ' + state.lifespan + ' años · ' + total.toLocaleString() + ' semanas en total';
 
-    // Life grid
+    // Life grid — dynamic columns on desktop, fixed 52 on mobile
+    var grid = document.getElementById('life-grid');
+    if (window.innerWidth > 700) {
+      var cellSize = 8;
+      var gap = 1;
+      var style = getComputedStyle(grid);
+      var padX = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+      var available = grid.clientWidth - padX;
+      var cols = Math.floor((available + gap) / (cellSize + gap));
+      if (cols < 1) cols = 1;
+      grid.style.gridTemplateColumns = 'repeat(' + cols + ', ' + cellSize + 'px)';
+    } else {
+      grid.style.gridTemplateColumns = '';
+    }
+
     var gridHtml = '';
     for (var i = 0; i < total; i++) {
       var cls = 'life-cell';
@@ -672,7 +686,7 @@
       else cls += ' future';
       gridHtml += '<div class="' + cls + '" title="Semana ' + (i + 1) + '"></div>';
     }
-    document.getElementById('life-grid').innerHTML = gridHtml;
+    grid.innerHTML = gridHtml;
 
     // Scroll current week into view
     requestAnimationFrame(function() {
@@ -695,8 +709,8 @@
     if (!validate()) return;
     var birthVal = $birthInput.value;
     state.birthDate = new Date(birthVal + 'T00:00:00');
-    renderResults();
     showScreen('screen-results');
+    renderResults();
   }
 
   function goToInput() { showScreen('screen-input'); updateCalendarIcon(); }
