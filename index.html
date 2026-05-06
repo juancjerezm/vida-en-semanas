@@ -243,8 +243,8 @@
   }
 
   .btn-reshuffle {
-    grid-column: 1 / -1;
-    justify-self: center;
+    display: block;
+    margin: 0.5rem auto 0 auto;
     padding: 0.65rem 1.5rem;
     background: transparent;
     border: 1px solid var(--border);
@@ -254,7 +254,6 @@
     color: var(--muted);
     cursor: pointer;
     transition: border-color 0.15s, color 0.15s;
-    margin-top: 0.5rem;
   }
 
   .btn-reshuffle:hover { border-color: var(--fg); color: var(--fg); }
@@ -452,6 +451,7 @@
   <div class="stats-row" id="stats-row" aria-label="Resumen numerico"></div>
 
   <div class="fun-stats-section" id="fun-stats" aria-label="Datos curiosos de tu vida"></div>
+  <div id="fun-stats-btn"></div>
 
   <div class="grid-card" id="grid-card">
     <div class="grid-card-header">
@@ -646,11 +646,9 @@
           '<div class="fun-stat-label">' + s.label.replace('{n}', s.value) + '</div>' +
         '</div>';
     });
-    html +=
-      '<button class="btn-reshuffle" id="btn-reshuffle" onclick="window._reshuffleStats()">' +
-        'Ver otros datos' +
-      '</button>';
     container.innerHTML = html;
+    document.getElementById('fun-stats-btn').innerHTML =
+      '<button class="btn-reshuffle" onclick="window._reshuffleStats()">Ver otros datos</button>';
   }
 
   window._reshuffleStats = function() {
@@ -666,11 +664,9 @@
           '<div class="fun-stat-label">' + s.label.replace('{n}', s.value) + '</div>' +
         '</div>';
     });
-    html +=
-      '<button class="btn-reshuffle" id="btn-reshuffle" onclick="window._reshuffleStats()">' +
-        'Ver otros datos' +
-      '</button>';
     container.innerHTML = html;
+    document.getElementById('fun-stats-btn').innerHTML =
+      '<button class="btn-reshuffle" onclick="window._reshuffleStats()">Ver otros datos</button>';
   };
 
   /* ====== Render Results ====== */
