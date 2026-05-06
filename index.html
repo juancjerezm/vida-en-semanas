@@ -206,7 +206,7 @@
   /* ====== Fun Stats ====== */
   .fun-stats-section {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 0.75rem;
   }
 
@@ -390,7 +390,6 @@
 
   @media (max-width: 700px) {
     .stats-row { grid-template-columns: repeat(2, 1fr); }
-    .fun-stats-section { grid-template-columns: repeat(2, 1fr); }
     .year-labels { display: none; }
     .life-grid { gap: 1px; }
   }
@@ -400,6 +399,11 @@
     .fun-stats-section { grid-template-columns: 1fr; }
     .results-top { flex-direction: column; }
     .btn-back { align-self: flex-start; }
+  }
+
+  /* Desktop: 4 columns (8 cards = 2 rows perfectas) */
+  @media (min-width: 701px) {
+    .fun-stats-section { grid-template-columns: repeat(4, 1fr); }
   }
 </style>
 </head>
@@ -622,7 +626,7 @@
     ];
   }
 
-  var STATS_PER_PAGE = 3; // cambiar este numero cuando el cliente pida mas o menos datos
+  var STATS_PER_PAGE = 8; // cambiar este numero cuando el cliente pida mas o menos datos
 
   function shuffleAndPick() {
     var shuffled = allStatsCache.slice().sort(function() { return 0.5 - Math.random(); });
