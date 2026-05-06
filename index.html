@@ -504,7 +504,9 @@
     $calendarDay.textContent = d;
   }
 
-  /* ====== Fun Life Stats (80 items, all shown) ====== */
+  /* ====== Fun Life Stats (80 items, show 8 random) ====== */
+
+  var STATS_PER_PAGE = 8;
 
   function buildAllStats(days, weeks) {
     var hours = days * 24;
@@ -604,9 +606,11 @@
 
   function renderFunStats(days, weeks) {
     var allStats = buildAllStats(days, weeks);
+    var shuffled = allStats.slice().sort(function() { return 0.5 - Math.random(); });
+    var picked = shuffled.slice(0, STATS_PER_PAGE);
     var container = document.getElementById('fun-stats');
     var html = '';
-    allStats.forEach(function(s) {
+    picked.forEach(function(s) {
       html +=
         '<div class="fun-stat-card">' +
           '<div class="fun-stat-icon">' + s.icon + '</div>' +
