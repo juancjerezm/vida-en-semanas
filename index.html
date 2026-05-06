@@ -622,15 +622,17 @@
     ];
   }
 
-  function shuffleAndPick3() {
+  var STATS_PER_PAGE = 3; // cambiar este numero cuando el cliente pida mas o menos datos
+
+  function shuffleAndPick() {
     var shuffled = allStatsCache.slice().sort(function() { return 0.5 - Math.random(); });
-    return shuffled.slice(0, 3);
+    return shuffled.slice(0, STATS_PER_PAGE);
   }
 
   function renderFunStats(days, weeks) {
     allStatsCache = buildAllStats(days, weeks);
     var container = document.getElementById('fun-stats');
-    var stats = shuffleAndPick3();
+    var stats = shuffleAndPick();
     var html = '';
     stats.forEach(function(s) {
       html +=
@@ -650,7 +652,7 @@
   window._reshuffleStats = function() {
     var container = document.getElementById('fun-stats');
     if (!allStatsCache) return;
-    var stats = shuffleAndPick3();
+    var stats = shuffleAndPick();
     var html = '';
     stats.forEach(function(s) {
       html +=
